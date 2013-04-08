@@ -88,6 +88,35 @@ class Chess(object):
         if p in ["k", "K"]:
             self.checkValidKingMove(p, f, t)
 
+    def checkValidQueenMove(self, p, f, t):
+        
+        tl, tn = t
+        fl, fn = f
+        
+        dy = int(tn) - int(fn)
+        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
+        
+        square = self.board[tn][tl]
+        try:
+            path = self.checkClearPath('h', f, t)
+        except InvalidMove:
+            try:
+                path = self.checkClearPath("v", f, t)
+            except InvalidMove:
+                try: 
+                    path = self.checkClearPath("d", f, t)
+                except InvalidMove:
+                    raise InvalidMove
+        
+        if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
+            raise InvalidMove
+            
+        if path[0]:
+            return True
+        
+        raise InvalidMove
+        
+
     def checkValidKingMove(self, p, f, t):
         
         tl, tn = t
@@ -98,15 +127,14 @@ class Chess(object):
         
         square = self.board[tn][tl]
         
+        if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
+            raise InvalidMove        
+        
         if abs(dx) > 1:
             pass
             # Castle move
         if abs(dy) > 1:
             raise InvalidMove
-            
-        if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-            raise InvalidMove
-            
 
     def checkValidKnightMove(self, p, f, t):
                 
@@ -192,12 +220,14 @@ class Chess(object):
         dy = (d * (int(tn) - int(fn)))
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
         
-        square = self.board[t[1]][t[0]]
+        square = self.board[tn][tl]
+        path = self.checkClearPath("v", f, t)
 
-        if (dy == 2) and (fn in ["2", "7"]) and (dx == 0) and all(self.checkClearPath("v", f, t)):
+
+        if (dy == 2) and (fn in ["2", "7"]) and (dx == 0) and all(path):
             return True
 
-        if (dy == 1) and (dx == 0) and all(self.checkClearPath("v", f, t)):
+        if (dy == 1) and (dx == 0) and all(path):
             return True
 
         if (dy == 1) and (abs(dx) == 1) and ((square.islower() == p.upper()) or (square.isupper() == p.islower())):
@@ -207,38 +237,67 @@ class Chess(object):
 
     def checkClearPath(self, path, f, t):
         """h v d k"""
+                
+        tl, tn = t
+        fl, fn = f
 
+        dy = (int(tn) - int(fn))
+        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
+        
+        from_square = self.board[fn][fl]
+        to_square   = self.board[tn][tl]
+        if (abs(dx) > 0) and (abs(dy) == 0):
+            path = "h"
+        elif (abs(dx) == 0) and (abs(dy) > 0):
+            path = "v"
+        else:
+            try:
+                if abs(dy/float(dx)) == 1:
+                    path = "d"
+                else:
+                    raise InvalidMove
+            except ZeroDivisionError:
+                raise InvalidMove
+            
+        #~ Horizontal Moves ----------------------------------------------------
         if path == "h":
-            a, b = (self.LETTERS.find(f[0]), self.LETTERS.find(t[0]))
+            a, b = (self.LETTERS.find(fl), self.LETTERS.find(tl))
             if (b - a) > 0: d = 1
-            else: d = -1
+            else:           d = -1
 
             empty = []
             for l in self.LETTERS[a:b:d]:
-                if self.board[f[1]][l] == " ":
+                if self.board[fn][l] == " ":
                     empty.append(True)
                 else:
                     empty.append(False)
-            return (all(empty[1:]), self.board[t[1]][t[0]] == " ")
+            return (all(empty[1:]), to_square == " ")
 
+        #~ Vertical Moves ------------------------------------------------------
         elif path == "v":
-            a, b = (int(f[1]), int(t[1]))
+            a, b = (int(fn), int(tn))
             if (b - a) > 0: d = 1
-            else: d = -1
+            else:           d = -1
 
             empty = []
             for n in xrange(a, b, d):
-                if self.board[str(n)][f[0]] == " ":
+                if self.board[str(n)][fl] == " ":
                     empty.append(True)
                 else:
                     empty.append(False)
-            return (all(empty[1:]), self.board[t[1]][t[0]] == " ")
+            return (all(empty[1:]), self.board[tn][tl] == " ")
 
+        #~ Diagonal Moves ------------------------------------------------------
         elif path == "d":
-            x = (self.LETTERS.find(f[0]), self.LETTERS.find(t[0]))
-            dx = x[1] - x[0]
-            y = (int(f[1]), int(t[1]))
-            dy = y[1] - y[0]
+            dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
+            dy = int(tn) - int(fn)
+
+            # Make sure the slope is one
+            try:
+                if abs(dy/float(dx)) != 1:
+                    raise InvalidMove
+            except ZeroDivisionError:
+                raise InvalidMove
 
             if dx > 0: xd = 1
             else:      xd = -1
@@ -246,19 +305,13 @@ class Chess(object):
             if dy > 0: yd = 1
             else:      yd = -1
 
-            try:
-                if abs(dy/float(dx)) != 1:
-                    raise InvalidMove
-            except ZeroDivisionError:
-                raise InvalidMove
-
-            a = self.LETTERS.find(f[0])
-            b = int(f[1])
+            x = self.LETTERS.find(fl)
+            y = int(fn)
             empty = []
             for _ in xrange(abs(dx)):
-                a += xd
-                b += yd
-                if self.board[str(b)][self.LETTERS[a]] == " ":
+                x += xd
+                y += yd
+                if self.board[str(y)][self.LETTERS[x]] == " ":
                     empty.append(True)
                 else:
                     empty.append(False)

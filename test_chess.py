@@ -96,10 +96,6 @@ class TestPawnMovements(TestCase):
 
     def test_diag_path(self):
 
-        self.assertRaises(InvalidMove, self.chess.checkClearPath, 'd', 'a1', 'b1')
-        self.assertRaises(InvalidMove, self.chess.checkClearPath, 'd', 'a1', 'a2')
-        self.assertTrue(self.chess.checkClearPath('d', 'a1', 'b2'))
-
         self.assertEqual(self.chess.checkClearPath('d', 'a3', 'd6'), (True, True))
         self.assertEqual(self.chess.checkClearPath('d', 'a6', 'd3'), (True, True))
         self.assertEqual(self.chess.checkClearPath('d', 'd6', 'a3'), (True, True))
