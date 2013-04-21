@@ -1,102 +1,192 @@
 # encoding: utf-8
 
-class InvalidPiece(Exception): pass
-class InvalidMove(Exception): pass
 
-import ipdb
+class Error(Exception):
+    def __init__(self, msg=""):
+        self.msg = msg
 
-DEBUG = False
+class InvalidColor(Error):
+    def __str__(self):
+        return "Incalid color \"{}\". Valid colors: W, B, White and Black".format(self.msg)
 
-class Chess(object):
+class InvalidPiece(Error):
+    def __str__(self):
+        return "Invalid piece \"{}\".  Valid selections: King, Queen, Rook, Bishop, Knight and Pawn".format(self.msg)
 
-    LETTERS = "abcdefgh"
+class InvalidMove(Error):
+    def __str__(self):
+        return self.msg
 
-    PIECES = {'K': '♔',
-              'Q': '♕',
-              'R': '♖',
-              'B': '♗',
-              'N': '♘',
-              'P': '♙',
-              'k': '♚',
-              'q': '♛',
-              'r': '♜',
-              'b': '♝',
-              'n': '♞',
-              'p': '♟'}
 
-    def __init__(self):
-        self.board = self.initializeBord()
-        #~ self.drawBord()
-        
-        # Casteling information
-        self.white_king_moved = False
-        self.white_king_rook_moved = False
-        self.white_queen_rook_moved = False
-        
-        self.black_king_moves = False
-        self.black_king_rook_moved = False
-        self.black_queen_rook_moved = False
-        
-        # En pawn sant
-        self.previous_move = None
+class Piece(object):
 
-    def initializeBord(self):
-        bord = {n:{l:" " for l in "abcdefgh"} for n in "12345678"}
-        for n in "12345678":
-            rank = bord[n]
-            for i, l in enumerate("abcdefgh"):
-                if n == "1":
-                    rank[l] = self.PIECES["rnbqkbnr"[i]]
-                elif n == "2":
-                    rank[l] = self.PIECES["p"]
-                elif n == "7":
-                    rank[l] = self.PIECES["P"]
-                elif n == "8":
-                    rank[l] = self.PIECES["RNBQKBNR"[i]]
-        return bord
+    pieces = {"king"  : {"b": "♔", "w": "♚"},
+              "queen" : {"b": "♕", "w": "♛"},
+              "rook"  : {"b": "♖", "w": "♜"},
+              "bishop": {"b": "♗", "w": "♝"},
+              "knight": {"b": "♘", "w": "♞"},
+              "pawn"  : {"b": "♙", "w": "♟"}}
 
-    def drawBoard(self):
+    def __init__(self, piece, color):
+        try:
+            group = self.pieces[piece.lower()]
+        except KeyError:
+            raise InvalidPiece(piece)
+        else:
+            try:
+                self.piece = group[color[0].lower()]
+            except KeyError:
+                raise InvalidColor(color)
+            else:
+                self.color = color[0].lower()
+
+        self.name = piece
+
+    def __repr__(self):
+        return "{} @ {}".format(self.piece, self.pos)
+
+    def __str__(self):
+        return self.piece
+
+    def move(self, f, t):
+        p = self._getPieceFrom(f)
+        self._checkValidMove(f, t)
+        self._setPieceTo(p, t)
+        self._clearOldSpot(f)
+
+    def _clearOldSpot(self, location):
+        l, n = location.lower()
+        self.board[n][l] = " "
+        return True
+
+    def _getPieceFrom(self, location):
+        l, n = location.lower()
+        p = self.board[n][l]
+        if p == " ":
+            raise InvalidMove("Must select a square with a piece on it")
+        else:
+            return p
+
+    def _setPieceTo(self, piece, location):
+        l, n = location.lower()
+        self.board[n][l] = piece
+        return True
+
+class Pawn(Piece):
+    value = 1
+
+    def __init__(self, color, pos):
+        super(Pawn, self).__init__("pawn", color)
+        self.pos = pos
+
+    def _checkValidMove(self, f, t):
+        print "is valid"
+
+class Rook(Piece):
+    value = 5
+
+    def __init__(self, color, pos):
+        super(Rook, self).__init__("rook", color)
+        self.pos = pos
+
+
+class Knight(Piece):
+    value = 3
+
+    def __init__(self, color, pos):
+        super(Knight, self).__init__("knight", color)
+        self.pos = pos
+
+
+class Bishop(Piece):
+    value = 3
+
+    def __init__(self, color, pos):
+        super(Bishop, self).__init__("bishop", color)
+        self.pos = pos
+
+
+class Queen(Piece):
+    value = 9
+
+    def __init__(self, color, pos):
+        super(Queen, self).__init__("queen", color)
+        self.pos = pos
+
+
+class King(Piece):
+    value = 1000
+
+    def __init__(self, color, pos):
+        super(King, self).__init__("king", color)
+        self.pos = pos
+
+
+class Board(object):
+
+    letters = "abcdefgh"
+    numbers = "12345678"
+
+    def initBoard(self):
+        self.board = {n:{l:" " for l in self.letters} for n in self.numbers}
+
+        lineup = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
+        for piece, letter in zip(lineup, self.letters):
+            for number, color in zip("18", "wb"):
+                self.board[number][letter] = piece(color, letter + number)
+            for number, color in zip("27", "wb"):
+                self.board[number][letter] = Pawn(color, letter + number)
+
+    def move(self, f, t):
+        pass
+
+    def showBoard(self):
+
         ranks = []
-        
-        tl = '┌'
-        tr = '┐'
-        t  = '┬'
-        h  = '─'
-        v  = '│'
-        bl = '└'
-        br = '┘'
-        x  = '┼'
-        l  = '├'
-        r  = '┤'
-        b  = '┴'
-        
-        hs = '{}{}{}'.format(h, h, h)
-        print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(tl, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, tr)
+
+        tl, tr, bl, br = "┌ ┐ └ ┘".split()
+        t, b, l, r  = "┬ ┴ ├ ┤".split()
+        h, v, x = "─ │ ┼".split()
+
+        s = "{v} {a} {v} {b} {v} {c} {v} {d} {v} {e} {v} {f} {v} {g} {v} {h} {v}"
+        hs = "{}{}{}".format(h, h, h)
+        p = (tl, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, tr)
+        print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(*p)
         for n in "12345678":
             rank = self.board[n]
-            ranks.append("{v} {a} {v} {b} {v} {c} {v} {d} {v} {e} {v} {f} {v} {g} {v} {h} {v}".format(v=v, **rank))
-
-
+            ranks.append(s.format(v=v, **rank))
         for i, rank in enumerate(ranks[::-1], start=1):
             print "{} {}".format(9-i, rank)
             if 9-i == 1:
                 break
-            print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(l, hs, x, hs, x, hs, x, hs, x, hs, x, hs, x, hs, x, hs, r)
-            
-        print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(bl, hs, b, hs, b, hs, b, hs, b, hs, b, hs, b, hs, b, hs, br)
+            p = (l, hs, x, hs, x, hs, x, hs, x, hs, x, hs, x, hs, x, hs, r)
+            print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(*p)
+        p = (bl, hs, b, hs, b, hs, b, hs, b, hs, b, hs, b, hs, b, hs, br)
+        print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(*p)
         print "    a   b   c   d   e   f   g   h"
 
 
-    def move(self, piece, to):
-        l, n = piece.lower()
-        piece = self.board[n][l]
+'''
+class Chess(object):
 
-        self.checkValidMove(piece, l+n, to)
+    def __init__(self):
+        self.board = self.initializeBord()
+        #~ self.drawBord()
 
-        self.board[n][l] = " "
+        # Casteling information
+        self.white_king_moved = False
+        self.white_king_rook_moved = False
+        self.white_queen_rook_moved = False
 
-        l, n = to.lower()
-        self.board[n][l] = piece
+        self.black_king_moves = False
+        self.black_king_rook_moved = False
+        self.black_queen_rook_moved = False
+
+        # En pawn sant
+        self.previous_move = None
+
+
+
 
 
     def checkValidMove(self, p, f, t):
@@ -108,7 +198,7 @@ class Chess(object):
 
         tl, tn = t
         fl, fn = f
-        
+
         dy = int(tn) - int(fn)
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
 
@@ -120,10 +210,10 @@ class Chess(object):
 
         if p in ["b", "B"]:
             self.checkValidBishopMove(p, f, t)
-            
+
         if p in ["n", "N"]:
             self.checkValidKnightMove(p, f, t)
-            
+
         if p in ["k", "K"]:
             self.checkValidKingMove(p, f, t)
 
@@ -137,7 +227,7 @@ class Chess(object):
 
         dy = (d * (int(tn) - int(fn)))
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-        
+
         square = self.board[tn][tl]
         path = self.checkClearPath("v", f, t)
 
@@ -154,46 +244,46 @@ class Chess(object):
         raise InvalidMove
 
     def checkValidQueenMove(self, p, f, t):
-        
+
         tl, tn = t
         fl, fn = f
-        
+
         dy = int(tn) - int(fn)
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-        
+
         square = self.board[tn][tl]
         try:
-            path = self.checkClearPath('h', f, t)
+            path = self.checkClearPath("h", f, t)
         except InvalidMove:
             try:
                 path = self.checkClearPath("v", f, t)
             except InvalidMove:
-                try: 
+                try:
                     path = self.checkClearPath("d", f, t)
                 except InvalidMove:
                     raise InvalidMove
-        
+
         if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
             raise InvalidMove
-            
+
         if path[0]:
             return True
-        
+
         raise InvalidMove
-        
+
     def checkValidKingMove(self, p, f, t):
-        
+
         tl, tn = t
         fl, fn = f
-        
+
         dy = int(tn) - int(fn)
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-        
+
         square = self.board[tn][tl]
-        
+
         if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-            raise InvalidMove        
-        
+            raise InvalidMove
+
         if abs(dx) > 1:
             pass
             # Castle move
@@ -201,15 +291,15 @@ class Chess(object):
             raise InvalidMove
 
     def checkValidKnightMove(self, p, f, t):
-                
+
         tl, tn = t
         fl, fn = f
-        
+
         dy = abs(int(tn) - int(fn))
         dx = abs(self.LETTERS.find(tl) - self.LETTERS.find(fl))
-        
+
         square = self.board[tn][tl]
-        
+
         if ((dx == 2) and (dy == 1)) or ((dx == 1) and (dy == 2)):
             if square == ' ':
                 return True
@@ -274,13 +364,13 @@ class Chess(object):
 
     def checkClearPath(self, f, t):
         """h v d k"""
-                
+
         tl, tn = t
         fl, fn = f
 
         dy = (int(tn) - int(fn))
         dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-        
+
         from_square = self.board[fn][fl]
         to_square   = self.board[tn][tl]
         if (abs(dx) > 0) and (abs(dy) == 0) and from_square.lower() in 'rqk':
@@ -299,7 +389,7 @@ class Chess(object):
             path = 'n'
 
 
-        empty = []            
+        empty = []
         #~ Horizontal Moves ----------------------------------------------------
         if path == "h":
             a, b = (self.LETTERS.find(fl), self.LETTERS.find(tl))
@@ -346,7 +436,15 @@ class Chess(object):
                     empty.append(False)
 
             return (all(empty[:-1]), empty[-1])
+'''
 
 if __name__ == "__main__":
-    chess = Chess()
-    chess.drawBoard()
+    b = Board()
+    b.initBoard()
+
+    p = Rook('w', 'a1')
+
+
+
+
+    b.showBoard()
