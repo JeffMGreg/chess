@@ -183,9 +183,25 @@ class Knight(Piece):
         super(Knight, self).__init__("knight", color)
         self.pos = pos
 
-    def _checkValidMove(self, f, t, board):
-        print "is valid"
+    def _checkValidMove(self, t, board):
+        tl, tn = t
+        fl, fn = self.pos
+        b = board.board
 
+        dy = abs(int(tn) - int(fn))
+        dx = abs(self.letters.find(tl) - self.letters.find(fl))
+
+        s = b[tn][tl]
+    
+        if ((dx == 2) and (dy == 1)) or ((dx == 1) and (dy == 2)):
+            if s.name is None:
+                return True
+            if s.color == self.color:
+                raise InvalidMove
+            else:
+                return True
+        raise InvalidMove
+        
 
 class Bishop(Piece):
     value = 3
@@ -194,8 +210,52 @@ class Bishop(Piece):
         super(Bishop, self).__init__("bishop", color)
         self.pos = pos
 
-    def _checkValidMove(self, f, t, board):
-        print "is valid"
+    def _checkValidMove(self, t, board):
+        tl, tn = t
+        fl, fn = self.pos
+        b = board.board
+
+        dy = (int(tn) - int(fn))
+        dx = self.letters.find(tl) - self.letters.find(fl)
+
+        try:
+            if abs(float(dx)/dy) != 1:
+                raise InvalidMove
+        except ZeroDivisionError:
+            raise InvalidMove
+
+        p = self._checkClearPath(fl, fn, dx, dy, b)
+        s = b[tn][tl]
+
+        if all(p):
+            return True
+        if not p[0]:
+            raise InvalidMove
+        if not p[1]:
+            if self.color == s.color:
+                raise InvalidMove
+            else:
+                return True
+        raise InvalidMove
+
+    def _checkClearPath(self, fl, fn, dx, dy, b):
+        if dx > 0: xd = 1
+        else:      xd = -1
+
+        if dy > 0: yd = 1
+        else:      yd = -1
+
+        x = self.letters.find(fl)
+        y = int(fn)
+        empty = []
+        for _ in xrange(abs(dx)):
+            x += xd
+            y += yd
+            if b[str(y)][self.letters[x]].name is None:
+                empty.append(True)
+            else:
+                empty.append(False)
+        return (all(empty[:-1]), empty[-1])
 
 
 class Queen(Piece):
@@ -205,8 +265,15 @@ class Queen(Piece):
         super(Queen, self).__init__("queen", color)
         self.pos = pos
 
-    def _checkValidMove(self, f, t, board):
-        print "is valid"
+    def _checkValidMove(self, t, board):
+        tl, tn = t
+        fl, fn = self.pos
+        b = board.board
+
+        dy = int(tn) - int(fn)
+        dx = self.letters.find(tl) - self.letters.find(fl)
+
+        s = self.board[tn][tl]
 
 
 class King(Piece):
@@ -330,96 +397,6 @@ class Chess(object):
 
         raise InvalidMove
 
-    def checkValidKingMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = int(tn) - int(fn)
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        square = self.board[tn][tl]
-
-        if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-            raise InvalidMove
-
-        if abs(dx) > 1:
-            pass
-            # Castle move
-        if abs(dy) > 1:
-            raise InvalidMove
-
-    def checkValidKnightMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = abs(int(tn) - int(fn))
-        dx = abs(self.LETTERS.find(tl) - self.LETTERS.find(fl))
-
-        square = self.board[tn][tl]
-
-        if ((dx == 2) and (dy == 1)) or ((dx == 1) and (dy == 2)):
-            if square == ' ':
-                return True
-            if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-                raise InvalidMove
-        raise InvalidMove
-
-    def checkValidBishopMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = (int(tn) - int(fn))
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        path   = self.checkClearPath("d", f, t)
-        square = self.board[tn][tl]
-
-        if all(path):
-            return True
-
-        if not path[0]:
-            raise InvalidMove
-
-
-        if not path[1]:
-            if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-                raise InvalidMove
-            else:
-                return True
-        raise InvalidMove
-
-    def checkValidRookMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = (int(tn) - int(fn))
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        if (abs(dx) > 0) and (abs(dy) > 0):
-            raise InvalidMove
-
-        if (abs(dx) > 0):
-            path = self.checkClearPath("h", f, t)
-        else:
-            path = self.checkClearPath("v", f, t)
-        square = self.board[tn][tl]
-
-        if all(path):
-            return True
-
-        if not path[0]:
-            raise InvalidMove
-
-        if not path[1]:
-            if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-                raise InvalidMove
-            else:
-                return True
-        raise InvalidMove
 
     def checkClearPath(self, f, t):
         """h v d k"""
