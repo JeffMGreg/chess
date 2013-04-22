@@ -106,6 +106,8 @@ class Pawn(Piece):
         s = b[tn][tl]
         p = self._checkClearPath(fl, fn, tn, d, b)
 
+        import ipdb; ipdb.set_trace()
+
         if (dy == 2) and (fn in ["2", "7"]) and (dx == 0) and p:
             return True
         elif (dy == 1) and (dx == 0) and p:
@@ -200,7 +202,7 @@ class Board(object):
         l, n = f.lower()
         p = self.board[n][l]
         if p.name:
-            p.move(f, t, self.board)
+            p.move(t, self.board)
         else:
             raise InvalidMove("Must select a square with a piece on it")
 
@@ -484,8 +486,8 @@ class Chess(object):
 
 if __name__ == "__main__":
     b = Board()
-    b.initBoard()
+    #~ b.initBoard()
 
-    p = Rook('w', 'a1')
-
+    p = Pawn('b', 'a7')
+    b.board['7']['a'] = p
     b.showBoard()
