@@ -5,110 +5,57 @@ from chess import *
 class TestPawnMovements(TestCase):
 
     def setUp(self):
-        self.chess = Chess()
+        self.chess = Board()
+        self.pawn = Pawn('w', 'a2')
+        self.chess.board['2']['a'] = self.pawn
 
-    def test_checkClearPath_H_positive_dx_clear_path(self):
-        self.chess.board['3']['a'] = 'r'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'R'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
+    def test_setUp(self):
+        pass
 
-        self.chess.board['3']['a'] = 'q'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
+    def test_pawn_move_one_space_from_start(self):
 
-        self.chess.board['3']['a'] = 'Q'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'k'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'K'
-        self.assertTrue(self.chess.checkClearPath('a3', 'h3'), (True, True))
-        self.assertTrue(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-    def test_checkClearPath_H_negative_dx_clear_path(self):
-        self.chess.board['3']['h'] = 'r'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'R'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
+        self.pawn.move('a3', self.chess.board)
+        square = self.chess.board['3']['a']
+        self.assertEqual(square.name, "pawn")
+        self.assertEqual(square.color, "w")
+        self.assertEqual(self.pawn.pos, 'a3')
+        self.assertEqual(self.chess.board['2']['a'].name, None)
 
-        self.chess.board['3']['h'] = 'q'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
+    def test_pawn_move_two_spaces_from_start(self):
 
-        self.chess.board['3']['h'] = 'Q'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'k'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'K'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (True, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-    def test_checkClearPath_H_negative_dx_block_path(self):
-        self.chess.board['3']['d'] = 'p'
-        self.chess.board['3']['h'] = 'r'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'R'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
+        self.pawn.move('a4', self.chess.board)
+        square = self.chess.board['4']['a']
+        self.assertEqual(square.name, "pawn")
+        self.assertEqual(square.color, "w")
+        self.assertEqual(self.pawn.pos, "a4")
+        self.assertEqual(self.chess.board['2']['a'].name, None)
 
-        self.chess.board['3']['h'] = 'q'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
+    def test_pawn_move_three_spaces_from_start(self):
 
-        self.chess.board['3']['h'] = 'Q'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'k'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-        self.chess.board['3']['h'] = 'K'
-        self.assertEqual(self.chess.checkClearPath('h3', 'a3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('h3', 'g3'), (True, True))
-        
-    def test_checkClearPath_H_positve_dx_block_path(self):
-        self.chess.board['3']['d'] = 'p'
-        self.chess.board['3']['a'] = 'r'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'R'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
+        self.assertRaises(InvalidMove, self.pawn.move, 'a5', self.chess.board)
+        square = self.chess.board['5']['a']
+        self.assertEqual(square.name, None)
+        self.assertEqual(self.pawn.pos, "a2")
 
-        self.chess.board['3']['a'] = 'q'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
+    def test_pawn_move_two_spaces_after_moving(self):
 
-        self.chess.board['3']['a'] = 'Q'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'k'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        self.chess.board['3']['a'] = 'K'
-        self.assertEqual(self.chess.checkClearPath('a3', 'h3'), (False, True))
-        self.assertEqual(self.chess.checkClearPath('a3', 'b3'), (True, True))
-        
-        
-        
+        self.pawn.move('a3', self.chess.board)
+        self.assertRaises(InvalidMove, self.pawn.move, 'a5', self.chess.board)
+
+    def test_pawn_move_one_space_after_moving_one_space(self):
+
+        self.pawn.move('a3', self.chess.board)
+        self.pawn.move('a4', self.chess.board)
+
+    def test_pawn_move_one_space_after_moving_two_spaces(self):
+
+        self.pawn.move('a4', self.chess.board)
+        self.pawn.move('a5', self.chess.board)
+
+    def test_pawn_move_back(self):
+
+        self.pawn.move('a4', self.chess.board)
+        self.assertRaises(InvalidMove, self.pawn.move, 'a3', self.chess.board)
+
+
 main()
