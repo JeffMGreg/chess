@@ -55,31 +55,18 @@ class Piece(object):
         return self.piece
 
     def move(self, t, board):
-        p = self._getPieceFrom(self.pos, board)
-        self._checkValidMove(self.pos, t, board)
-        self._setPieceTo(p, t, board)
-        self._clearOldSpot(self.pos, board)
-        self.pos = t
-
-    def _clearOldSpot(self, location, board):
-        l, n = location.lower()
-        board[n][l] = Space()
-        return True
-
-    def _getPieceFrom(self, location, board):
-        l, n = location.lower()
-        return board[n][l]
-
-    def _setPieceTo(self, piece, location, board):
-        l, n = location.lower()
-        board[n][l] = piece
-        return True
-
+        l, n = self.pos
+        p = board.board[n][l]  # Grab piece at current location
+        self._checkValidMove(t, board) 
+        board.board[t[1]][t[0]] = p  # Put piece at "to" location
+        board.board[n][l] = Space()  # Set old spot as empty
+        self.pos = t  # Set pieces pos to new position
 
 class Space(object):
     value = 0
-    name = None
-
+    color = ""
+    name  = None
+    
     def __str__(self):
         return " "
 
@@ -91,9 +78,10 @@ class Pawn(Piece):
         super(Pawn, self).__init__("pawn", color)
         self.pos = pos
 
-    def _checkValidMove(self, f, t, b):
+    def _checkValidMove(self, t, board):
         tl, tn = t
         fl, fn = self.pos
+        b = board.board
 
         if self.color == "w":
             d = 1
@@ -101,25 +89,23 @@ class Pawn(Piece):
             d = -1
 
         dy = (d * (int(tn) - int(fn)))
-        dx = self.letters.find(tl) - self.letters.find(fl)
+        dx = abs(self.letters.find(tl) - self.letters.find(fl))
 
         s = b[tn][tl]
         p = self._checkClearPath(fl, fn, tn, d, b)
-
-        import ipdb; ipdb.set_trace()
 
         if (dy == 2) and (fn in ["2", "7"]) and (dx == 0) and p:
             return True
         elif (dy == 1) and (dx == 0) and p:
             return True
-        elif (dy == 1) and (abs(dx) == 1) and (s.color != s.color):
+        elif (dy == 1) and (dx == 1) and (self.color == "wb".replace(s.color, "")):
             return True
 
-        raise InvalidMove("Invalid pawn move")
+        raise InvalidMove("Invalid pawn move to {}".format(t))
 
     def _checkClearPath(self, fl, fn, tn, d, b):
         empty = []
-        for n in xrange(int(fn) + 1, int(tn) + 1, d):
+        for n in xrange(int(fn) + d, int(tn) + d, d):
             if b[str(n)][fl].name is None:
                 empty.append(True)
             else:
@@ -134,8 +120,60 @@ class Rook(Piece):
         super(Rook, self).__init__("rook", color)
         self.pos = pos
 
-    def _checkValidMove(self, f, t, board):
-        print "is valid"
+    def _checkValidMove(self, t, board):
+        tl, tn = t
+        fl, fn = self.pos
+        b = board.board
+
+        dy = (int(tn) - int(fn))
+        dx = self.letters.find(tl) - self.letters.find(fl)
+
+        s = b[tn][tl]
+
+        if (abs(dx) > 0) and (abs(dy) > 0):
+            raise InvalidMove
+
+        p = self._checkClearPath(dx, fl, fn, tl, tn, b)
+
+        if all(p):
+            return True
+        elif not p[0]:
+            raise InvalidMove
+        elif not p[1]:
+            if (s.color == self.color):
+                raise InvalidMove
+            else:
+                return True
+                
+        raise InvalidMove       
+        
+    def _checkClearPath(self, dx, fl, fn, tl, tn, b):
+        
+        empty = []
+        if dx > 0:
+            i, j = (self.letters.find(fl), self.letters.find(tl))
+            if (j - i) > 0: 
+                d = 1
+            else:           
+                d = -1
+            for l in self.letters[i:j:d]:
+                if not b[fn][l].name:
+                    empty.append(True)
+                else:
+                    empty.append(False)
+            return (all(empty[1:]), b[tn][tl].name is None)
+        else:
+            i, j = (int(fn), int(tn))
+            if (j - i) > 0: 
+                d = 1
+            else:           
+                d = -1
+            for n in xrange(i, j, d):
+                if not b[str(n)][fl].name:
+                    empty.append(True)
+                else:
+                    empty.append(False)
+            return (all(empty[1:]), b[tn][tl].name is None)            
 
 
 class Knight(Piece):
@@ -182,8 +220,8 @@ class King(Piece):
         print "is valid"
 
 
-class Board(object):
-
+class Game(object):
+            
     letters = "abcdefgh"
     numbers = "12345678"
 
@@ -263,31 +301,6 @@ class Chess(object):
         if p in ["k", "K"]:
             self.checkValidKingMove(p, f, t)
 
-    def checkValidPawnMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        if p.islower(): d = 1
-        else:           d = -1
-
-        dy = (d * (int(tn) - int(fn)))
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        square = self.board[tn][tl]
-        path = self.checkClearPath("v", f, t)
-
-
-        if (dy == 2) and (fn in ["2", "7"]) and (dx == 0) and all(path):
-            return True
-
-        if (dy == 1) and (dx == 0) and all(path):
-            return True
-
-        if (dy == 1) and (abs(dx) == 1) and ((square.islower() == p.upper()) or (square.isupper() == p.islower())):
-            return True
-
-        raise InvalidMove
 
     def checkValidQueenMove(self, p, f, t):
 
@@ -483,11 +496,3 @@ class Chess(object):
 
             return (all(empty[:-1]), empty[-1])
 '''
-
-if __name__ == "__main__":
-    b = Board()
-    #~ b.initBoard()
-
-    p = Pawn('b', 'a7')
-    b.board['7']['a'] = p
-    b.showBoard()
