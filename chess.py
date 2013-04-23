@@ -54,14 +54,31 @@ class Piece(object):
     def __str__(self):
         return self.piece
 
-    def move(self, t, board):
+    def move(self, t):
         l, n = self.pos
-        p = board.board[n][l]  # Grab piece at current location
-        self._checkValidMove(t, board) 
-        board.board[t[1]][t[0]] = p  # Put piece at "to" location
-        board.board[n][l] = Space()  # Set old spot as empty
+        p = self.board[n][l]  # Grab piece at current location
+        self._checkValidMove(t)
+        self.board[t[1]][t[0]] = p  # Put piece at "to" location
+        self.board[n][l] = Space(self.pos)  # Set old spot as empty
         self.pos = t  # Set pieces pos to new position
-        
+
+    def _move(self):
+        fl, fn = self.pos
+        tl, tn = t
+
+        x, xx = self.letters.find(fl), self.letters.find(tl)
+        y, yy = int(fn), int(tn)
+        dx = xx - x
+        dy = yy - y
+
+        if dx > 0: xd = 1
+        else:      xd = -1
+
+        if dy > 0: yd = 1
+        else:      yd = -1
+
+        return fl, fn, tl, tn, x, xx, y, yy, dx, dy
+
     def _checkHorizontalPath(self, fl, fn, tl, tn, dx, dy, b):
         i, j = (self.letters.find(fl), self.letters.find(tl))
         if (j - i) > 0: d = 1
@@ -73,7 +90,7 @@ class Piece(object):
             else:
                 empty.append(False)
         return (all(empty[1:]), b[tn][tl].name is None)
-        
+
     def _checkVerticalPath(self, fl, fn, tl, tn, dx, dy, b):
         i, j = (int(fn), int(tn))
         if (j - i) > 0: d = 1
@@ -84,8 +101,8 @@ class Piece(object):
                 empty.append(True)
             else:
                 empty.append(False)
-        return (all(empty[1:]), b[tn][tl].name is None)   
-    
+        return (all(empty[1:]), b[tn][tl].name is None)
+
     def _checkDiagonalPath(self, fl, fn, tl, tn, dx, dy, b):
         if dx > 0: xd = 1
         else:      xd = -1
@@ -103,13 +120,16 @@ class Piece(object):
             else:
                 empty.append(False)
         return (all(empty[:-1]), empty[-1])
-        
+
 
 class Space(object):
     value = 0
     color = ""
     name  = None
-    
+
+    def __init__(self, pos):
+        self.pos = pos
+
     def __str__(self):
         return " "
 
@@ -117,14 +137,15 @@ class Space(object):
 class Pawn(Piece):
     value = 1
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(Pawn, self).__init__("pawn", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, t, board):
+    def _checkValidMove(self, t):
         tl, tn = t
         fl, fn = self.pos
-        b = board.board
+        b = self.board
 
         if self.color == "w":
             d = 1
@@ -159,14 +180,15 @@ class Pawn(Piece):
 class Rook(Piece):
     value = 5
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(Rook, self).__init__("rook", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, t, board):
+    def _checkValidMove(self, t):
         tl, tn = t
         fl, fn = self.pos
-        b = board.board
+        b = self.board
 
         dy = (int(tn) - int(fn))
         dx = self.letters.find(tl) - self.letters.find(fl)
@@ -187,9 +209,9 @@ class Rook(Piece):
                 raise InvalidMove
             else:
                 return True
-                
-        raise InvalidMove       
-        
+
+        raise InvalidMove
+
     def _checkClearPath(self, fl, fn, tl, tn, dx, dy, b):
         if dx > 0:
             return self._checkHorizontalPath(fl, fn, tl, tn, dx, dy, b)
@@ -200,20 +222,21 @@ class Rook(Piece):
 class Knight(Piece):
     value = 3
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(Knight, self).__init__("knight", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, t, board):
+    def _checkValidMove(self, t):
         tl, tn = t
         fl, fn = self.pos
-        b = board.board
+        b = self.board
 
         dy = abs(int(tn) - int(fn))
         dx = abs(self.letters.find(tl) - self.letters.find(fl))
 
         s = b[tn][tl]
-    
+
         if ((dx == 2) and (dy == 1)) or ((dx == 1) and (dy == 2)):
             if s.name is None:
                 return True
@@ -222,19 +245,20 @@ class Knight(Piece):
             else:
                 return True
         raise InvalidMove
-        
+
 
 class Bishop(Piece):
     value = 3
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(Bishop, self).__init__("bishop", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, t, board):
+    def _checkValidMove(self, t):
         tl, tn = t
         fl, fn = self.pos
-        b = board.board
+        b = self.board
 
         dy = (int(tn) - int(fn))
         dx = self.letters.find(tl) - self.letters.find(fl)
@@ -258,19 +282,20 @@ class Bishop(Piece):
             else:
                 return True
         raise InvalidMove
-        
+
 
 class Queen(Piece):
     value = 9
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(Queen, self).__init__("queen", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, t, board):
+    def _checkValidMove(self, t):
         tl, tn = t
         fl, fn = self.pos
-        b = board.board
+        b = self.board
 
         dy = int(tn) - int(fn)
         dx = self.letters.find(tl) - self.letters.find(fl)
@@ -290,30 +315,43 @@ class Queen(Piece):
             except ZeroDivisionError:
                 raise InvalidMove
             return self._checkDiagonalPath(fl, fn, tl, tn, dx, dy, b)
-                
+
 
 class King(Piece):
     value = 1000
 
-    def __init__(self, color, pos):
+    def __init__(self, color, pos, board):
         super(King, self).__init__("king", color)
         self.pos = pos
+        self.board = board
 
-    def _checkValidMove(self, f, t, board):
-        print "is valid"
+    def _checkValidMove(self, t):
+        tl, tn = t
+        fl, fn = self.pos
+        b = self.board
+
+        dy = int(tn) - int(fn)
+        dx = self.letters.find(tl) - self.letters.find(fl)
+
+        s = b[tn][tl]
+
+        if (abs(dx) > 1) or (abs(dy) > 1):
+            raise InvalidMove
+        if s.name is None:
+            return True
+        if s.color != self.color:
+            return True
+        raise InvalidMove
 
 
 class Game(object):
-            
-    letters = "abcdefgh"
-    numbers = "12345678"
 
     def __init__(self):
-        self.board = {n:{l:Space() for l in self.letters} for n in self.numbers}
+        self.board = {n:{l:Space(l+n) for l in "abcdefgh"} for n in "12345678"}
 
     def initBoard(self):
         lineup = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
-        for piece, letter in zip(lineup, self.letters):
+        for piece, letter in zip(lineup, "abcdefgh"):
             for number, color in zip("18", "wb"):
                 self.board[number][letter] = piece(color, letter + number)
             for number, color in zip("27", "wb"):
@@ -323,14 +361,11 @@ class Game(object):
         l, n = f.lower()
         p = self.board[n][l]
         if p.name:
-            p.move(t, self.board)
+            p.move(t)
         else:
             raise InvalidMove("Must select a square with a piece on it")
 
     def showBoard(self):
-
-        ranks = []
-
         tl, tr, bl, br = "┌ ┐ └ ┘".split()
         t, b, l, r  = "┬ ┴ ├ ┤".split()
         h, v, x = "─ │ ┼".split()
@@ -339,6 +374,7 @@ class Game(object):
         hs = "{}{}{}".format(h, h, h)
         p = (tl, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, t, hs, tr)
         print "  {}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(*p)
+        ranks = []
         for n in "12345678":
             rank = self.board[n]
             ranks.append(s.format(v=v, **rank))
