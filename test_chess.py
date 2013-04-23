@@ -353,4 +353,48 @@ class TestBlackBishopAttacks(TestCase):
         self.chess.board['2']['b'] = Pawn('b', 'b2')
         self.assertRaises(InvalidMove, self.b.move, 'b2', self.chess)
 
+class TestWhiteQueenMovements(TestCase):
+    
+    def setUp(self):
+        self.chess = Game()
+        self.q = Queen('w', 'a1')
+        self.chess.board['1']['a'] = self.q
+        
+    def test_valid_moves(self):
+        self.q.move('h1', self.chess)
+        self.q.move('a8', self.chess)
+        self.q.move('h8', self.chess)
+        self.q.move('h1', self.chess)
+        self.q.move('h8', self.chess)
+        self.q.move('a1', self.chess)
+    
+    def test_invalid_move(self):
+        self.assertRaises(InvalidMove, self.q.move, 'b8', self.chess)
+        self.assertRaises(InvalidMove, self.q.move, 'b3', self.chess)
+        self.assertRaises(InvalidMove, self.q.move, 'c2', self.chess)
+    
+class TestBlackQueenMovements(TestCase):
+    
+    def setUp(self):
+        self.chess = Game()
+        self.q = Queen('b', 'a1')
+        self.chess.board['1']['a'] = self.q
+        
+    def test_valid_moves(self):
+        self.q.move('h1', self.chess)
+        self.q.move('a8', self.chess)
+        self.q.move('h8', self.chess)
+        self.q.move('h1', self.chess)
+        self.q.move('h8', self.chess)
+        self.q.move('a1', self.chess)
+    
+    def test_invalid_move(self):
+        self.assertRaises(InvalidMove, self.q.move, 'b8', self.chess)
+        self.assertRaises(InvalidMove, self.q.move, 'b3', self.chess)
+        self.assertRaises(InvalidMove, self.q.move, 'c2', self.chess)
+       
+    
+    
+    
+
 main()

@@ -61,6 +61,49 @@ class Piece(object):
         board.board[t[1]][t[0]] = p  # Put piece at "to" location
         board.board[n][l] = Space()  # Set old spot as empty
         self.pos = t  # Set pieces pos to new position
+        
+    def _checkHorizontalPath(self, fl, fn, tl, tn, dx, dy, b):
+        i, j = (self.letters.find(fl), self.letters.find(tl))
+        if (j - i) > 0: d = 1
+        else:           d = -1
+        empty = []
+        for l in self.letters[i:j:d]:
+            if not b[fn][l].name:
+                empty.append(True)
+            else:
+                empty.append(False)
+        return (all(empty[1:]), b[tn][tl].name is None)
+        
+    def _checkVerticalPath(self, fl, fn, tl, tn, dx, dy, b):
+        i, j = (int(fn), int(tn))
+        if (j - i) > 0: d = 1
+        else:           d = -1
+        empty = []
+        for n in xrange(i, j, d):
+            if not b[str(n)][fl].name:
+                empty.append(True)
+            else:
+                empty.append(False)
+        return (all(empty[1:]), b[tn][tl].name is None)   
+    
+    def _checkDiagonalPath(self, fl, fn, tl, tn, dx, dy, b):
+        if dx > 0: xd = 1
+        else:      xd = -1
+        if dy > 0: yd = 1
+        else:      yd = -1
+
+        x = self.letters.find(fl)
+        y = int(fn)
+        empty = []
+        for _ in xrange(abs(dx)):
+            x += xd
+            y += yd
+            if b[str(y)][self.letters[x]].name is None:
+                empty.append(True)
+            else:
+                empty.append(False)
+        return (all(empty[:-1]), empty[-1])
+        
 
 class Space(object):
     value = 0
@@ -133,7 +176,7 @@ class Rook(Piece):
         if (abs(dx) > 0) and (abs(dy) > 0):
             raise InvalidMove
 
-        p = self._checkClearPath(dx, fl, fn, tl, tn, b)
+        p = self._checkClearPath(fl, fn, tl, tn, dx, dy, b)
 
         if all(p):
             return True
@@ -147,33 +190,11 @@ class Rook(Piece):
                 
         raise InvalidMove       
         
-    def _checkClearPath(self, dx, fl, fn, tl, tn, b):
-        
-        empty = []
+    def _checkClearPath(self, fl, fn, tl, tn, dx, dy, b):
         if dx > 0:
-            i, j = (self.letters.find(fl), self.letters.find(tl))
-            if (j - i) > 0: 
-                d = 1
-            else:           
-                d = -1
-            for l in self.letters[i:j:d]:
-                if not b[fn][l].name:
-                    empty.append(True)
-                else:
-                    empty.append(False)
-            return (all(empty[1:]), b[tn][tl].name is None)
+            return self._checkHorizontalPath(fl, fn, tl, tn, dx, dy, b)
         else:
-            i, j = (int(fn), int(tn))
-            if (j - i) > 0: 
-                d = 1
-            else:           
-                d = -1
-            for n in xrange(i, j, d):
-                if not b[str(n)][fl].name:
-                    empty.append(True)
-                else:
-                    empty.append(False)
-            return (all(empty[1:]), b[tn][tl].name is None)            
+            return self._checkVerticalPath(fl, fn, tl, tn, dx, dy, b)
 
 
 class Knight(Piece):
@@ -224,7 +245,7 @@ class Bishop(Piece):
         except ZeroDivisionError:
             raise InvalidMove
 
-        p = self._checkClearPath(fl, fn, dx, dy, b)
+        p = self._checkDiagonalPath(fl, fn, tl, tn, dx, dy, b)
         s = b[tn][tl]
 
         if all(p):
@@ -237,26 +258,7 @@ class Bishop(Piece):
             else:
                 return True
         raise InvalidMove
-
-    def _checkClearPath(self, fl, fn, dx, dy, b):
-        if dx > 0: xd = 1
-        else:      xd = -1
-
-        if dy > 0: yd = 1
-        else:      yd = -1
-
-        x = self.letters.find(fl)
-        y = int(fn)
-        empty = []
-        for _ in xrange(abs(dx)):
-            x += xd
-            y += yd
-            if b[str(y)][self.letters[x]].name is None:
-                empty.append(True)
-            else:
-                empty.append(False)
-        return (all(empty[:-1]), empty[-1])
-
+        
 
 class Queen(Piece):
     value = 9
@@ -273,8 +275,22 @@ class Queen(Piece):
         dy = int(tn) - int(fn)
         dx = self.letters.find(tl) - self.letters.find(fl)
 
-        s = self.board[tn][tl]
+        p = self._checkClearPath(fl, fn, tl, tn, dx, dy, b)
+        s = b[tn][tl]
 
+    def _checkClearPath(self, fl, fn, tl, tn, dx, dy, b):
+        if (abs(dx) > 0) and (dy == 0):
+            return self._checkHorizontalPath(fl, fn, tl, tn, dx, dy, b)
+        elif (dx == 0) and (abs(dy) > 0):
+            return self._checkVerticalPath(fl, fn, tl, tn, dx, dy, b)
+        else:
+            try:
+                if abs(float(dx)/dy) != 1:
+                    raise InvalidMove
+            except ZeroDivisionError:
+                raise InvalidMove
+            return self._checkDiagonalPath(fl, fn, tl, tn, dx, dy, b)
+                
 
 class King(Piece):
     value = 1000
@@ -337,139 +353,3 @@ class Game(object):
         print "    a   b   c   d   e   f   g   h"
 
 
-'''
-class Chess(object):
-
-    def checkValidMove(self, p, f, t):
-
-        if DEBUG == True:
-            import ipdb; ipdb.set_trace()
-
-        if p == " ": raise InvalidPiece
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = int(tn) - int(fn)
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        if p in ["p", "P"]:
-            self.checkValidPawnMove(p, f, t)
-
-        if p in ["r", "R"]:
-            self.checkValidRookMove(p, f, t)
-
-        if p in ["b", "B"]:
-            self.checkValidBishopMove(p, f, t)
-
-        if p in ["n", "N"]:
-            self.checkValidKnightMove(p, f, t)
-
-        if p in ["k", "K"]:
-            self.checkValidKingMove(p, f, t)
-
-
-    def checkValidQueenMove(self, p, f, t):
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = int(tn) - int(fn)
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        square = self.board[tn][tl]
-        try:
-            path = self.checkClearPath("h", f, t)
-        except InvalidMove:
-            try:
-                path = self.checkClearPath("v", f, t)
-            except InvalidMove:
-                try:
-                    path = self.checkClearPath("d", f, t)
-                except InvalidMove:
-                    raise InvalidMove
-
-        if (square.islower() == p.islower()) or (square.isupper() == p.isupper()):
-            raise InvalidMove
-
-        if path[0]:
-            return True
-
-        raise InvalidMove
-
-
-    def checkClearPath(self, f, t):
-        """h v d k"""
-
-        tl, tn = t
-        fl, fn = f
-
-        dy = (int(tn) - int(fn))
-        dx = self.LETTERS.find(tl) - self.LETTERS.find(fl)
-
-        from_square = self.board[fn][fl]
-        to_square   = self.board[tn][tl]
-        if (abs(dx) > 0) and (abs(dy) == 0) and from_square.lower() in 'rqk':
-            path = "h"
-        elif (abs(dx) == 0) and (abs(dy) > 0) and from_square.lower() in 'rqkp':
-            path = "v"
-        elif (abs(dx) > 0) and (abs(dy) > 0) and from_square.lower() in 'bq':
-            try:
-                if abs(dy/float(dx)) == 1:
-                    path = "d"
-                else:
-                    raise InvalidMove
-            except ZeroDivisionError:
-                raise InvalidMove
-        elif (((abs(dx) == 2) and (abs(dy) == 1)) or ((abs(dx) == 1) and (abs(dy) == 2))) and (from_square.lower() in 'n'):
-            path = 'n'
-
-
-        empty = []
-        #~ Horizontal Moves ----------------------------------------------------
-        if path == "h":
-            a, b = (self.LETTERS.find(fl), self.LETTERS.find(tl))
-            if (b - a) > 0: d = 1
-            else:           d = -1
-
-            for l in self.LETTERS[a:b:d]:
-                if self.board[fn][l] == " ":
-                    empty.append(True)
-                else:
-                    empty.append(False)
-            return (all(empty[1:]), to_square == " ")
-
-        #~ Vertical Moves ------------------------------------------------------
-        elif path == "v":
-            a, b = (int(fn), int(tn))
-            if (b - a) > 0: d = 1
-            else:           d = -1
-
-            for n in xrange(a, b, d):
-                if self.board[str(n)][fl] == " ":
-                    empty.append(True)
-                else:
-                    empty.append(False)
-            return (all(empty[1:]), to_square == " ")
-
-        #~ Diagonal Moves ------------------------------------------------------
-        elif path == "d":
-
-            if dx > 0: xd = 1
-            else:      xd = -1
-
-            if dy > 0: yd = 1
-            else:      yd = -1
-
-            x = self.LETTERS.find(fl)
-            y = int(fn)
-            for _ in xrange(abs(dx)):
-                x += xd
-                y += yd
-                if self.board[str(y)][self.LETTERS[x]] == " ":
-                    empty.append(True)
-                else:
-                    empty.append(False)
-
-            return (all(empty[:-1]), empty[-1])
-'''
