@@ -62,14 +62,15 @@ class Piece(object):
         self.board[n][l] = Space(self.pos)  # Set old spot as empty
         self.pos = t  # Set pieces pos to new position
 
-    def _move(self):
+    def _move(self, t):
         fl, fn = self.pos
         tl, tn = t
-
-        x, xx = self.letters.find(fl), self.letters.find(tl)
-        y, yy = int(fn), int(tn)
-        dx = xx - x
-        dy = yy - y
+        x, xx  = self.letters.find(fl), self.letters.find(tl)
+        y, yy  = int(fn), int(tn)
+        dx     = xx - x
+        dy     = yy - y
+        b      = self.board
+        s      = b[tn][tl]
 
         if dx > 0: xd = 1
         else:      xd = -1
@@ -77,9 +78,9 @@ class Piece(object):
         if dy > 0: yd = 1
         else:      yd = -1
 
-        return fl, fn, tl, tn, x, xx, y, yy, dx, dy
+        return fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b
 
-    def _checkHorizontalPath(self, fl, fn, tl, tn, dx, dy, b):
+    def _checkHorizontalPath(self, fl, fn, tl, tn, b):
         i, j = (self.letters.find(fl), self.letters.find(tl))
         if (j - i) > 0: d = 1
         else:           d = -1
@@ -91,7 +92,7 @@ class Piece(object):
                 empty.append(False)
         return (all(empty[1:]), b[tn][tl].name is None)
 
-    def _checkVerticalPath(self, fl, fn, tl, tn, dx, dy, b):
+    def _checkVerticalPath(self, fl, fn, tl, tn, b):
         i, j = (int(fn), int(tn))
         if (j - i) > 0: d = 1
         else:           d = -1
@@ -186,19 +187,15 @@ class Rook(Piece):
         self.board = board
 
     def _checkValidMove(self, t):
-        tl, tn = t
-        fl, fn = self.pos
-        b = self.board
 
-        dy = (int(tn) - int(fn))
-        dx = self.letters.find(tl) - self.letters.find(fl)
-
-        s = b[tn][tl]
-
+        fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b = self._move(t)
         if (abs(dx) > 0) and (abs(dy) > 0):
             raise InvalidMove
 
-        p = self._checkClearPath(fl, fn, tl, tn, dx, dy, b)
+        if dx > 0:
+            p = self._checkHorizontalPath(fl, fn, tl, tn, b)
+        else:
+            p = self._checkVerticalPath(fl, fn, tl, tn, b)
 
         if all(p):
             return True
@@ -209,14 +206,7 @@ class Rook(Piece):
                 raise InvalidMove
             else:
                 return True
-
         raise InvalidMove
-
-    def _checkClearPath(self, fl, fn, tl, tn, dx, dy, b):
-        if dx > 0:
-            return self._checkHorizontalPath(fl, fn, tl, tn, dx, dy, b)
-        else:
-            return self._checkVerticalPath(fl, fn, tl, tn, dx, dy, b)
 
 
 class Knight(Piece):
@@ -228,16 +218,8 @@ class Knight(Piece):
         self.board = board
 
     def _checkValidMove(self, t):
-        tl, tn = t
-        fl, fn = self.pos
-        b = self.board
-
-        dy = abs(int(tn) - int(fn))
-        dx = abs(self.letters.find(tl) - self.letters.find(fl))
-
-        s = b[tn][tl]
-
-        if ((dx == 2) and (dy == 1)) or ((dx == 1) and (dy == 2)):
+        fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b = self._move(t)
+        if ((abs(dx) == 2) and (abs(dy) == 1)) or ((abs(dx) == 1) and (abs(dy) == 2)):
             if s.name is None:
                 return True
             if s.color == self.color:
@@ -256,12 +238,7 @@ class Bishop(Piece):
         self.board = board
 
     def _checkValidMove(self, t):
-        tl, tn = t
-        fl, fn = self.pos
-        b = self.board
-
-        dy = (int(tn) - int(fn))
-        dx = self.letters.find(tl) - self.letters.find(fl)
+        fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b = self._move(t)
 
         try:
             if abs(float(dx)/dy) != 1:
@@ -270,7 +247,6 @@ class Bishop(Piece):
             raise InvalidMove
 
         p = self._checkDiagonalPath(fl, fn, tl, tn, dx, dy, b)
-        s = b[tn][tl]
 
         if all(p):
             return True
@@ -293,21 +269,12 @@ class Queen(Piece):
         self.board = board
 
     def _checkValidMove(self, t):
-        tl, tn = t
-        fl, fn = self.pos
-        b = self.board
+        fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b = self._move(t)
 
-        dy = int(tn) - int(fn)
-        dx = self.letters.find(tl) - self.letters.find(fl)
-
-        p = self._checkClearPath(fl, fn, tl, tn, dx, dy, b)
-        s = b[tn][tl]
-
-    def _checkClearPath(self, fl, fn, tl, tn, dx, dy, b):
         if (abs(dx) > 0) and (dy == 0):
-            return self._checkHorizontalPath(fl, fn, tl, tn, dx, dy, b)
+            return self._checkHorizontalPath(fl, fn, tl, tn, b)
         elif (dx == 0) and (abs(dy) > 0):
-            return self._checkVerticalPath(fl, fn, tl, tn, dx, dy, b)
+            return self._checkVerticalPath(fl, fn, tl, tn, b)
         else:
             try:
                 if abs(float(dx)/dy) != 1:
@@ -326,14 +293,7 @@ class King(Piece):
         self.board = board
 
     def _checkValidMove(self, t):
-        tl, tn = t
-        fl, fn = self.pos
-        b = self.board
-
-        dy = int(tn) - int(fn)
-        dx = self.letters.find(tl) - self.letters.find(fl)
-
-        s = b[tn][tl]
+        fl, fn, tl, tn, x, xx, y, yy, dx, dy, s, b = self._move(t)
 
         if (abs(dx) > 1) or (abs(dy) > 1):
             raise InvalidMove
