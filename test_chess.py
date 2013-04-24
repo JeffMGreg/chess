@@ -463,23 +463,23 @@ class TestGameState(TestCase):
         self.chess.move('a7', 'a5')
         self.assertEqual(self.chess.currentColor, 'w')
 
-    def test_pawn_special(self):
+    def test_pawn_enpassant(self):
         self.chess.move('h2', 'h3') # w
         self.chess.move('b7', 'b5') # b
         self.chess.move('h3', 'h4') # w
         self.chess.move('b5', 'b4') # b
-        self.chess.move('a2', 'a4') 
-        self.chess.move('b4', 'a3')
+        self.chess.move('a2', 'a4') # w
+        self.chess.move('b4', 'a3') # b enpassant
 
-    def test_pawn_special_invalid(self):
+    def test_pawn_enpassant_invalid(self):
         self.chess.move('h2', 'h3') # w
         self.chess.move('b7', 'b5') # b
         self.chess.move('h3', 'h4') # w
         self.chess.move('b5', 'b4') # b
         self.chess.move('a2', 'a4') # w trying to pass
-        self.chess.move('h7', 'h6') # b passes special        
-        self.chess.move('h4', 'h5') # w
-        self.assertRaises(InvalidMove, self.chess.move, 'b4', 'a3')
+        self.chess.move('h7', 'h6') # b passes enpassant move for another      
+        self.chess.move('h4', 'h5') # w 
+        self.assertRaises(InvalidMove, self.chess.move, 'b4', 'a3') # b enpassant
 
 main()
 

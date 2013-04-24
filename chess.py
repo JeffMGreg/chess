@@ -60,7 +60,7 @@ class Piece(object):
         p = self.board[n][l]  # Grab piece at current location
         special = self._checkValidMove(t)
         self.board[t[1]][t[0]] = p  # Put piece at "to" location
-        if special == "ps":
+        if special == "enpassant":
             self.board[n][t[0]] = Space(self.pos)
         else:
             self.board[n][l] = Space(self.pos)  # Set old spot as empty
@@ -168,13 +168,13 @@ class Pawn(Piece):
                 return True
             elif s.name is None:
                 if self.game.lastMoved == b[fn][tl]:
-                    if self.game.lastMoved.pos[1] == self.pos[1]:
+                    if self.game.lastMoved.pos[1] == fn:
                         i = "abcdefgh".find(self.game.lastMoved.pos[0])
-                        j = "abcdefgh".find(self.pos[0])
+                        j = "abcdefgh".find(fl)
                         if abs(i-j) == 1:
                             if self.game.lastMoved.color != self.color:
                                 if self.game.lastMoved.firstMove:
-                                    return "ps"
+                                    return "enpassant"
             else:
                 raise InvalidMove
         raise InvalidMove("Invalid pawn move to {}".format(t))
