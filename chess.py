@@ -21,6 +21,10 @@ class InvalidMove(Error):
         return self.msg
 
 
+class SpecialMove(Error):
+    pass
+
+
 class Piece(object):
 
     numbers = "12345678"
@@ -58,17 +62,21 @@ class Piece(object):
     def move(self, t):
         l, n = self.pos
         p = self.board[n][l]  # Grab piece at current location
-        special = self._checkValidMove(t)
+        try:
+            special = self._checkValidMove(t)
+        except SpecialMove:
+            return
         self.board[t[1]][t[0]] = p  # Put piece at "to" location
         if special == "enpassant":
-            self.board[n][t[0]] = Space(self.pos)
-        else:
-            self.board[n][l] = Space(self.pos)  # Set old spot as empty
-        
+            x, y = self.game.lastMoved.pos
+            self.board[y][x] = Space(x+y)
+        self.board[n][l] = Space(self.pos)  # Set old spot as empty
         self.pos = t  # Set pieces pos to new position
         self._updateFirstMove()
         self.game.lastMoved = p
-    
+
+        #~ self.game.show()
+
     def _updateFirstMove(self):
         if self.firstMove is None:
             self.firstMove = True
@@ -310,7 +318,35 @@ class King(Piece):
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
 
-        if (abs(dx) > 1) or (abs(dy) > 1):
+        if abs(dy) > 1 or abs(dx) > 2:
+            raise InvalidMove
+        if dx == 2:
+            if self.firstMove is None:
+                rightSquare = self.board[self.pos[1]]["h"]
+                if (rightSquare.name == "rook") and (rightSquare.firstMove is None):
+                    p = self._checkHorizontalPath(fl, fn, "g", "1", xd, x, xx, b)
+                    if all(p):
+                        self.board["1"]["g"] = self
+                        self.board["1"]["f"] = rightSquare
+                        self.pos = "g1"
+                        rightSquare.pos = "f1"
+                        self.board["1"]["e"] = Space("e1")
+                        self.board["1"]["h"] = Space("h1")
+                        raise SpecialMove
+            raise InvalidMove
+        if dx == -2:
+            if self.firstMove is None:
+                leftSquare = self.board[self.pos[1]]["a"]
+                if (leftSquare.name == "rook") and (leftSquare.firstMove is None):
+                    p = self._checkHorizontalPath(fl, fn, "b", "1", xd, x, xx, b)
+                    if all(p):
+                        self.board["1"]["c"] = self
+                        self.board["1"]["d"] = leftSquare
+                        self.pos = "c1"
+                        leftSquare.pos = "d1"
+                        self.board["1"]["a"] = Space("a1")
+                        self.board["1"]["e"] = Space("e1")
+                        raise SpecialMove
             raise InvalidMove
         if s.name is None:
             return True
@@ -326,7 +362,7 @@ class Game(object):
         self.lastMoved = Space('')
         self.currentColor = "w"
 
-    def initBoard(self):
+    def init(self):
         lineup = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
         for piece, letter in zip(lineup, "abcdefgh"):
             for number, color in zip("18", "wb"):
@@ -337,10 +373,10 @@ class Game(object):
     def move(self, f, t):
         l, n = f.lower()
         p = self.board[n][l]
-        
+
         if p.color != self.currentColor:
             raise InvalidMove
-            
+
         if p.name:
             p.move(t)
             self.lastMoved = p
@@ -348,7 +384,9 @@ class Game(object):
         else:
             raise InvalidMove("Must select a square with a piece on it")
 
-    def showBoard(self):
+        #~ self.show()
+
+    def show(self):
         tl, tr, bl, br = "┌ ┐ └ ┘".split()
         t, b, l, r  = "┬ ┴ ├ ┤".split()
         h, v, x = "─ │ ┼".split()
@@ -372,3 +410,7 @@ class Game(object):
         print "    a   b   c   d   e   f   g   h"
 
 
+if __name__ == "__main__":
+    c = Game()
+    c.init()
+    c.show()

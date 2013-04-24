@@ -150,16 +150,16 @@ class TestPawnAttacks(TestCase):
         self.chess.board["5"]["b"] = self.bp
         self.chess.board["4"]["c"] = self.bp2
         self.assertRaises(InvalidMove, self.bp.move, "c4")
-        
+
 class TestPawnSpecial(TestCase):
-    
+
     def setUp(self):
         self.chess = Game()
         self.p1 = Pawn('w', 'a2', self.chess)
         self.p2 = Pawn('b', 'b4', self.chess)
         self.chess.board['2']['a'] = self.p1
         self.chess.board['4']['b'] = self.p2
-        
+
     def test_special_move_to_left(self):
         self.assertEqual(self.p1.firstMove, None)
         self.p1.move('a4')
@@ -168,11 +168,11 @@ class TestPawnSpecial(TestCase):
         self.assertEqual(self.chess.board['4']['a'].name, None)
         self.assertEqual(self.chess.board['3']['a'].name, 'pawn')
         self.assertEqual(self.chess.board['3']['a'].color, 'b')
-        
+
 
 class TestWhiteRookMovements(TestCase):
 
-    def setUp(self): 
+    def setUp(self):
         self.chess = Game()
         self.r = Rook("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.r
@@ -445,17 +445,17 @@ class TestKingAttacks(TestCase):
         self.assertRaises(InvalidMove, self.k.move, "a2")
 
 class TestGameState(TestCase):
-    
+
     def setUp(self):
         self.chess = Game()
-        self.chess.initBoard()
-    
+        self.chess.init()
+
     def test_white_move_first(self):
         self.chess.move('a2', 'a3')
 
     def test_black_fail_on_first_move(self):
         self.assertRaises(InvalidMove, self.chess.move, 'a7', 'a6')
-        
+
     def test_color_changes_on_turns(self):
         self.assertEqual(self.chess.currentColor, 'w')
         self.chess.move('a2', 'a3')
@@ -477,9 +477,42 @@ class TestGameState(TestCase):
         self.chess.move('h3', 'h4') # w
         self.chess.move('b5', 'b4') # b
         self.chess.move('a2', 'a4') # w trying to pass
-        self.chess.move('h7', 'h6') # b passes enpassant move for another      
-        self.chess.move('h4', 'h5') # w 
+        self.chess.move('h7', 'h6') # b passes enpassant move for another
+        self.chess.move('h4', 'h5') # w
         self.assertRaises(InvalidMove, self.chess.move, 'b4', 'a3') # b enpassant
+
+    def test_king_side_castle(self):
+
+        self.chess.board['1']['f'] = Space('f1')
+        self.chess.board['1']['g'] = Space('g1')
+        self.chess.move('e1', 'g1')
+
+        self.assertEqual(self.chess.board['1']['e'].name, None)
+        self.assertEqual(self.chess.board['1']['h'].name, None)
+
+        self.assertEqual(self.chess.board['1']['g'].name, "king")
+        self.assertEqual(self.chess.board['1']['f'].name, "rook")
+
+    def test_king_side_castle_king_moved(self):
+
+        self.chess.board['1']['f'] = Space('f1')
+        self.chess.board['1']['g'] = Space('g1')
+
+        self.chess.board['1']['e'].firstMove = True
+        self.assertRaises(InvalidMove, self.chess.move, 'e1', 'g1')
+
+    def test_queen_side_castle(self):
+        self.chess.board['1']['b'] = Space('b1')
+        self.chess.board['1']['c'] = Space('c1')
+        self.chess.board['1']['d'] = Space('d1')
+        self.chess.move('e1', 'c1')
+
+    def test_queen_side_castle_rook_moved(self):
+        self.chess.board['1']['b'] = Space('b1')
+        self.chess.board['1']['c'] = Space('c1')
+        self.chess.board['1']['d'] = Space('d1')
+        self.chess.board['1']['a'].firstMove = True
+        self.assertRaises(InvalidMove, self.chess.move, 'e1', 'c1')
 
 main()
 
