@@ -47,6 +47,7 @@ class Piece(object):
                 self.color = color[0].lower()
 
         self.name = piece
+        self.firstMove = None
 
     def __repr__(self):
         return "{} @ {}".format(self.piece, self.pos)
@@ -57,10 +58,26 @@ class Piece(object):
     def move(self, t):
         l, n = self.pos
         p = self.board[n][l]  # Grab piece at current location
-        self._checkValidMove(t)
+        special = self._checkValidMove(t)
         self.board[t[1]][t[0]] = p  # Put piece at "to" location
-        self.board[n][l] = Space(self.pos)  # Set old spot as empty
+        if special == "ps":
+            self.board[n][t[0]] = Space(self.pos)
+        else:
+            self.board[n][l] = Space(self.pos)  # Set old spot as empty
+        
         self.pos = t  # Set pieces pos to new position
+        self._updateFirstMove()
+        self.game.lastMoved = p
+    
+    def _updateFirstMove(self):
+        if self.firstMove is None:
+            self.firstMove = True
+            return True
+        elif self.firstMove is True:
+            self.firstMove = False
+            return False
+        else:
+            return False
 
     def _move(self, t):
         fl, fn = self.pos
@@ -72,10 +89,10 @@ class Piece(object):
         b      = self.board
         s      = b[tn][tl]
 
-        if dx > 0: xd = 1
+        if dx > 0: xd =  1
         else:      xd = -1
 
-        if dy > 0: yd = 1
+        if dy > 0: yd =  1
         else:      yd = -1
 
         return fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b
@@ -125,10 +142,11 @@ class Space(object):
 class Pawn(Piece):
     value = 1
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(Pawn, self).__init__("pawn", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -148,9 +166,17 @@ class Pawn(Piece):
         elif (dy == 1) and (abs(dx) == 1):
             if (self.color == "wb".replace(s.color, "")):
                 return True
+            elif s.name is None:
+                if self.game.lastMoved == b[fn][tl]:
+                    if self.game.lastMoved.pos[1] == self.pos[1]:
+                        i = "abcdefgh".find(self.game.lastMoved.pos[0])
+                        j = "abcdefgh".find(self.pos[0])
+                        if abs(i-j) == 1:
+                            if self.game.lastMoved.color != self.color:
+                                if self.game.lastMoved.firstMove:
+                                    return "ps"
             else:
                 raise InvalidMove
-
         raise InvalidMove("Invalid pawn move to {}".format(t))
 
     def _checkClearPath(self, fl, fn, tn, d, b):
@@ -166,10 +192,11 @@ class Pawn(Piece):
 class Rook(Piece):
     value = 5
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(Rook, self).__init__("rook", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -196,10 +223,11 @@ class Rook(Piece):
 class Knight(Piece):
     value = 3
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(Knight, self).__init__("knight", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -216,10 +244,11 @@ class Knight(Piece):
 class Bishop(Piece):
     value = 3
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(Bishop, self).__init__("bishop", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -247,10 +276,11 @@ class Bishop(Piece):
 class Queen(Piece):
     value = 9
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(Queen, self).__init__("queen", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -271,10 +301,11 @@ class Queen(Piece):
 class King(Piece):
     value = 1000
 
-    def __init__(self, color, pos, board):
+    def __init__(self, color, pos, game):
         super(King, self).__init__("king", color)
         self.pos = pos
-        self.board = board
+        self.game = game
+        self.board = game.board
 
     def _checkValidMove(self, t):
         fl, fn, tl, tn, x, xx, y, yy, dx, dy, xd, yd, s, b = self._move(t)
@@ -292,20 +323,28 @@ class Game(object):
 
     def __init__(self):
         self.board = {n:{l:Space(l+n) for l in "abcdefgh"} for n in "12345678"}
+        self.lastMoved = Space('')
+        self.currentColor = "w"
 
     def initBoard(self):
         lineup = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
         for piece, letter in zip(lineup, "abcdefgh"):
             for number, color in zip("18", "wb"):
-                self.board[number][letter] = piece(color, letter + number)
+                self.board[number][letter] = piece(color, letter + number, self)
             for number, color in zip("27", "wb"):
-                self.board[number][letter] = Pawn(color, letter + number)
+                self.board[number][letter] = Pawn(color, letter + number, self)
 
     def move(self, f, t):
         l, n = f.lower()
         p = self.board[n][l]
+        
+        if p.color != self.currentColor:
+            raise InvalidMove
+            
         if p.name:
             p.move(t)
+            self.lastMoved = p
+            self.currentColor = "wb".replace(p.color, "")
         else:
             raise InvalidMove("Must select a square with a piece on it")
 

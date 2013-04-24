@@ -6,7 +6,7 @@ class TestWhitePawnMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.pawn = Pawn("w", "a2", self.chess.board)
+        self.pawn = Pawn("w", "a2", self.chess)
         self.chess.board["2"]["a"] = self.pawn
 
     def test_pawn_move_one_space_from_start(self):
@@ -48,14 +48,14 @@ class TestWhitePawnMovements(TestCase):
         self.assertRaises(InvalidMove, self.pawn.move, "a3")
 
     def test_pawn_move_in_occupied_space(self):
-        bp = Pawn("b", "a5", self.chess.board)
+        bp = Pawn("b", "a5", self.chess)
         self.chess.board["5"]["a"] = bp
         self.assertRaises(InvalidMove, self.pawn.move, "a5")
         self.pawn.move("a4")
         self.assertRaises(InvalidMove, self.pawn.move, "a5")
 
     def test_pawn_move_past_occupied_space(self):
-        bp = Pawn("b", "a3", self.chess.board)
+        bp = Pawn("b", "a3", self.chess)
         self.chess.board["3"]["a"] = bp
         self.assertRaises(InvalidMove, self.pawn.move, "a4")
 
@@ -66,7 +66,7 @@ class TestBlackPawnMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.pawn = Pawn("b", "a7", self.chess.board)
+        self.pawn = Pawn("b", "a7", self.chess)
         self.chess.board["7"]["a"] = self.pawn
 
     def test_pawn_move_one_space_from_start(self):
@@ -108,14 +108,14 @@ class TestBlackPawnMovements(TestCase):
         self.assertRaises(InvalidMove, self.pawn.move, "a6")
 
     def test_pawn_move_in_occupied_space(self):
-        wp = Pawn("w", "a4", self.chess.board)
+        wp = Pawn("w", "a4", self.chess)
         self.chess.board["4"]["a"] = wp
         self.assertRaises(InvalidMove, self.pawn.move, "a4")
         self.pawn.move("a5")
         self.assertRaises(InvalidMove, self.pawn.move, "a4")
 
     def test_pawn_move_past_occupied_space(self):
-        wp = Pawn("w", "a6", self.chess.board)
+        wp = Pawn("w", "a6", self.chess)
         self.chess.board["6"]["a"] = wp
         self.assertRaises(InvalidMove, self.pawn.move, "a5")
 
@@ -126,10 +126,10 @@ class TestPawnAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.wp = Pawn("w", "a4", self.chess.board)
-        self.bp = Pawn("b", "b5", self.chess.board)
-        self.wp2 = Pawn("w", "b5", self.chess.board)
-        self.bp2 = Pawn("b", "c4", self.chess.board)
+        self.wp = Pawn("w", "a4", self.chess)
+        self.bp = Pawn("b", "b5", self.chess)
+        self.wp2 = Pawn("w", "b5", self.chess)
+        self.bp2 = Pawn("b", "c4", self.chess)
 
     def test_white_pawn_normal_attack(self):
         self.chess.board["4"]["a"] = self.wp
@@ -150,12 +150,31 @@ class TestPawnAttacks(TestCase):
         self.chess.board["5"]["b"] = self.bp
         self.chess.board["4"]["c"] = self.bp2
         self.assertRaises(InvalidMove, self.bp.move, "c4")
+        
+class TestPawnSpecial(TestCase):
+    
+    def setUp(self):
+        self.chess = Game()
+        self.p1 = Pawn('w', 'a2', self.chess)
+        self.p2 = Pawn('b', 'b4', self.chess)
+        self.chess.board['2']['a'] = self.p1
+        self.chess.board['4']['b'] = self.p2
+        
+    def test_special_move_to_left(self):
+        self.assertEqual(self.p1.firstMove, None)
+        self.p1.move('a4')
+        self.assertEqual(self.p1.firstMove, True)
+        self.p2.move('a3')
+        self.assertEqual(self.chess.board['4']['a'].name, None)
+        self.assertEqual(self.chess.board['3']['a'].name, 'pawn')
+        self.assertEqual(self.chess.board['3']['a'].color, 'b')
+        
 
 class TestWhiteRookMovements(TestCase):
 
-    def setUp(self):
+    def setUp(self): 
         self.chess = Game()
-        self.r = Rook("w", "a1", self.chess.board)
+        self.r = Rook("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.r
 
     def test_move_rook_v(self):
@@ -176,7 +195,7 @@ class TestBlackRookMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.r = Rook("b", "a8", self.chess.board)
+        self.r = Rook("b", "a8", self.chess)
         self.chess.board["8"]["a"] = self.r
 
     def test_move_rook_v(self):
@@ -197,17 +216,17 @@ class TestRookAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.wr = Rook("w", "a1", self.chess.board)
-        self.wp1 = Pawn("w", "a3", self.chess.board)
-        self.bp1 = Pawn("b", "c1", self.chess.board)
+        self.wr = Rook("w", "a1", self.chess)
+        self.wp1 = Pawn("w", "a3", self.chess)
+        self.bp1 = Pawn("b", "c1", self.chess)
 
         self.chess.board["1"]["a"] = self.wr
         self.chess.board["3"]["a"] = self.wp1
         self.chess.board["1"]["c"] = self.bp1
 
-        self.br = Rook("b", "h8", self.chess.board)
-        self.wp2 = Pawn("w", "h6", self.chess.board)
-        self.bp2 = Pawn("b", "f8", self.chess.board)
+        self.br = Rook("b", "h8", self.chess)
+        self.wp2 = Pawn("w", "h6", self.chess)
+        self.bp2 = Pawn("b", "f8", self.chess)
 
         self.chess.board["8"]["h"] = self.br
         self.chess.board["6"]["h"] = self.wp2
@@ -237,7 +256,7 @@ class TestWhiteKnightMoves(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.k = Knight("w", "a1", self.chess.board)
+        self.k = Knight("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.k
 
     def test_valid_move(self):
@@ -254,9 +273,9 @@ class TestWhiteKnightAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.k = Knight("w", "a1", self.chess.board)
-        self.wp = Pawn("w", "b3", self.chess.board)
-        self.bp = Pawn("b", "c2", self.chess.board)
+        self.k = Knight("w", "a1", self.chess)
+        self.wp = Pawn("w", "b3", self.chess)
+        self.bp = Pawn("b", "c2", self.chess)
 
         self.chess.board["1"]["a"] = self.k
         self.chess.board["3"]["b"] = self.wp
@@ -272,9 +291,9 @@ class TestBlackKnightAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.k = Knight("b", "a1", self.chess.board)
-        self.bp = Pawn("b", "b3", self.chess.board)
-        self.wp = Pawn("w", "c2", self.chess.board)
+        self.k = Knight("b", "a1", self.chess)
+        self.bp = Pawn("b", "b3", self.chess)
+        self.wp = Pawn("w", "c2", self.chess)
 
         self.chess.board["1"]["a"] = self.k
         self.chess.board["3"]["b"] = self.bp
@@ -290,7 +309,7 @@ class TestWhiteBishopMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.b = Bishop("w", "a1", self.chess.board)
+        self.b = Bishop("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.b
 
     def test_valid_move(self):
@@ -303,7 +322,7 @@ class TestBlackBishopMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.b = Bishop("b", "a1", self.chess.board)
+        self.b = Bishop("b", "a1", self.chess)
         self.chess.board["1"]["a"] = self.b
 
     def test_valid_move(self):
@@ -319,8 +338,8 @@ class TestWhiteBishopAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.b = Bishop("w", "a1", self.chess.board)
-        self.p = Bishop("b", "b2", self.chess.board)
+        self.b = Bishop("w", "a1", self.chess)
+        self.p = Bishop("b", "b2", self.chess)
         self.chess.board["1"]["a"] = self.b
         self.chess.board["2"]["b"] = self.p
 
@@ -331,15 +350,15 @@ class TestWhiteBishopAttacks(TestCase):
         self.assertRaises(InvalidMove, self.b.move, "h8")
 
     def test_attack_same_color(self):
-        self.chess.board["2"]["b"] = Pawn("w", "b2", self.chess.board)
+        self.chess.board["2"]["b"] = Pawn("w", "b2", self.chess)
         self.assertRaises(InvalidMove, self.b.move, "b2")
 
 class TestBlackBishopAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.b = Bishop("b", "a1", self.chess.board)
-        self.p = Bishop("w", "b2", self.chess.board)
+        self.b = Bishop("b", "a1", self.chess)
+        self.p = Bishop("w", "b2", self.chess)
         self.chess.board["1"]["a"] = self.b
         self.chess.board["2"]["b"] = self.p
 
@@ -350,14 +369,14 @@ class TestBlackBishopAttacks(TestCase):
         self.assertRaises(InvalidMove, self.b.move, "h8")
 
     def test_attack_same_color(self):
-        self.chess.board["2"]["b"] = Pawn("b", "b2", self.chess.board)
+        self.chess.board["2"]["b"] = Pawn("b", "b2", self.chess)
         self.assertRaises(InvalidMove, self.b.move, "b2")
 
 class TestWhiteQueenMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.q = Queen("w", "a1", self.chess.board)
+        self.q = Queen("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.q
 
     def test_valid_moves(self):
@@ -377,7 +396,7 @@ class TestBlackQueenMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.q = Queen("b", "a1", self.chess.board)
+        self.q = Queen("b", "a1", self.chess)
         self.chess.board["1"]["a"] = self.q
 
     def test_valid_moves(self):
@@ -397,7 +416,7 @@ class TestKingMovements(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.k = King("w", "a1", self.chess.board)
+        self.k = King("w", "a1", self.chess)
         self.chess.board["1"]["a"] = self.k
 
     def test_valid_move(self):
@@ -412,9 +431,9 @@ class TestKingAttacks(TestCase):
 
     def setUp(self):
         self.chess = Game()
-        self.k = King("w", "a1", self.chess.board)
-        self.wp = Pawn("w", "a2", self.chess.board)
-        self.bp = Pawn("b", "b1", self.chess.board)
+        self.k = King("w", "a1", self.chess)
+        self.wp = Pawn("w", "a2", self.chess)
+        self.bp = Pawn("b", "b1", self.chess)
         self.chess.board["1"]["a"] = self.k
         self.chess.board["2"]["a"] = self.wp
         self.chess.board["1"]["b"] = self.bp
@@ -425,5 +444,42 @@ class TestKingAttacks(TestCase):
     def test_invalid_move(self):
         self.assertRaises(InvalidMove, self.k.move, "a2")
 
+class TestGameState(TestCase):
+    
+    def setUp(self):
+        self.chess = Game()
+        self.chess.initBoard()
+    
+    def test_white_move_first(self):
+        self.chess.move('a2', 'a3')
+
+    def test_black_fail_on_first_move(self):
+        self.assertRaises(InvalidMove, self.chess.move, 'a7', 'a6')
+        
+    def test_color_changes_on_turns(self):
+        self.assertEqual(self.chess.currentColor, 'w')
+        self.chess.move('a2', 'a3')
+        self.assertEqual(self.chess.currentColor, 'b')
+        self.chess.move('a7', 'a5')
+        self.assertEqual(self.chess.currentColor, 'w')
+
+    def test_pawn_special(self):
+        self.chess.move('h2', 'h3') # w
+        self.chess.move('b7', 'b5') # b
+        self.chess.move('h3', 'h4') # w
+        self.chess.move('b5', 'b4') # b
+        self.chess.move('a2', 'a4') 
+        self.chess.move('b4', 'a3')
+
+    def test_pawn_special_invalid(self):
+        self.chess.move('h2', 'h3') # w
+        self.chess.move('b7', 'b5') # b
+        self.chess.move('h3', 'h4') # w
+        self.chess.move('b5', 'b4') # b
+        self.chess.move('a2', 'a4') # w trying to pass
+        self.chess.move('h7', 'h6') # b passes special        
+        self.chess.move('h4', 'h5') # w
+        self.assertRaises(InvalidMove, self.chess.move, 'b4', 'a3')
 
 main()
+
