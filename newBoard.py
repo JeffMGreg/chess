@@ -11,15 +11,18 @@ class InvalidMove(Exception):
 class Space(object):
 
     #~ Parts of the board that make up the piece location.  The space is needed
-    #~ for the linking_spaces method
+    #~ for the linking_spaces method in Board
     letters_numbers = ("abcdefgh  ", "12345678  ")
+    
     #~ These are the direction on how to find the neighboring squares. Origin is
-    #~ at "a1", letters along x numbers along y
+    #~ at "a1", letters are along x,  numbers are along y
     #~ Increasing in letters/numbers gives +delta
     #~ Decreasing in letters/numbers gives -delta
+    #~ The leading "_" is to help clean up namespace when working from cmdline
     compus_deltas = dict(
         _N  = ( 0,  1), _S  = ( 0, -1), _E  = ( 1,  0), _W  = (-1,  0),
         _NE = ( 1,  1), _NW = (-1,  1), _SE = ( 1, -1), _SW = (-1, -1),
+        #~ _L's are knight moves from the square
         _L1 = ( 1,  2), _L2 = ( 1, -2), _L3 = ( 2,  1), _L4 = ( 2, -1),
         _L5 = (-1,  2), _L6 = (-1, -2), _L7 = (-2,  1), _L8 = (-2, -1))
 
@@ -31,7 +34,8 @@ class Space(object):
         _N  = "V", _S  = "V", _E  = "H", _W  = "H", _NE = "D", _NW = "D", _SE = "D", _SW = "D",
         _L1 = "L", _L2 = "L", _L3 = "L", _L4 = "L", _L5 = "L", _L6 = "L", _L7 = "L", _L8 = "L")
 
-    #~ Geographical direction around the square
+    #~ Geographical direction around the square.  List to loop over when finding
+    #~ neighbors.
     compus_directions = ["_N" , "_S" , "_E" , "_W" , "_NE", "_NW", "_SE", "_SW",
                          "_L1", "_L2", "_L3", "_L4", "_L5", "_L6", "_L7", "_L8"]
 
@@ -47,6 +51,9 @@ class Space(object):
 
     def init(self, board):
         self._link_spaces(board)
+
+    def move(self, to):
+        return self.piece.move(self.get_paths(), to)
 
     def get_paths(self):
         """Get all the squares that have access to attack this square."""
@@ -68,19 +75,24 @@ class Space(object):
             #~ None implies we're at the edge of the board
             if space is None:
                 break
+                
             #~ colors match meaning we're attacking our own piece.  Only save up to the
             #~ piece and not the piece as we can't capture.
             if (current_color != "wb".replace(space.piece.color, "")) and space.piece.color:
                 return path
+                
             #~ colors are different meaning we're attaching a valid piece. Save up to and
             #~ including the piece first encountered.
             elif (current_color == "wb".replace(space.piece.color, "")) and space.piece.color:
                 path.add(space)
                 return path
+                
             path.add(space)
             #~ L shape moves only propagate one space for every direction.
             if direction.startswith("_L"):
                 return path
+                
+            #~ Set the neighbor as the current square.
             self = space
         return path
 
@@ -115,22 +127,25 @@ class Piece(object):
               "Empty" : {"" : " "}}
 
     def __init__(self, location, color=""):
-        self.first_move = 0
-        self.location = location
-        self.color = color
-        self.name = self.__class__.__name__
-        self.piece = self.pieces[self.name][self.color]
+        self.move_count = 0
+        self.location   = location
+        self.color      = color
+        self.name       = self.__class__.__name__
+        self.piece      = self.pieces[self.name][self.color]
 
     def __str__(self):
         return self.piece
 
-    def __repr__(self):
-        return self.piece
-        #~ return self.__class__.__name__
-
     def move(self, paths, to):
-        print "Handle {} moves from {} to {}".format(self.name, self.location, to)
-        self._move(paths, to)
+        #~ print "Handle {} moves from {} to {}".format(self.name, self.location, to)
+        
+        from_letter, from_number = self.location.location
+        to_letter, to_number = to
+        
+        dx = "abcdefgh".find(to_letter) - "abcdefgh".find(from_letter)
+        dy = "12345678".find(to_number) - "12345678".find(from_number)
+
+        return self._move(paths, to, dx, dy)
 
 class Empty(Piece):
     def __init__(self, location):
@@ -142,10 +157,32 @@ class Empty(Piece):
 class Pawn(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
+        
+        #~ The direction that the piece must move, only needed with Pawns
+        if self.color == "w":
+            #~ Must move up the board
+            self.must_move = 1
+        else:
+            #~ Must move down the board
+            self.must_move = -1
 
-    def _move(self, paths, to):
-        print "to", to
-        print paths
+    def _move(self, paths, to, dx, dy):
+        valid_vertical_locations = map(lambda x: x.location, paths["V"])
+        valid_diagonal_locations = map(lambda x: x.location, paths["D"])
+        
+        valid_moves = [
+        #~ Normal attack
+        ((dy * self.must_move) == 1) and (abs(dx) == 1) and (to in valid_diagonal_locations),
+        #~ Move one square
+        ((dy * self.must_move) == 1) and (dx == 0) and (to in valid_vertical_locations),
+        #~ Move two squares on first move
+        ((dy * self.must_move) == 2) and (dx == 0) and (to in valid_vertical_locations) and (self.move_count == 0),
+        #~ Enpassant
+        False]
+        
+        if any(valid_moves):
+            return True
+        raise InvalidMove("Invalid Pawn Move")
 
 class Rook(Piece):
     def __init__(self, location, color):
@@ -189,7 +226,7 @@ class Board(dict):
         #~ We're at the last file, we can now link our squares together.
         if key == "h":
             self._link_spaces()
-            self._setup_pieces()
+            #~ self._setup_pieces()
 
     def show(self):
         #~ "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼"
@@ -212,9 +249,9 @@ class Board(dict):
         letter, number = location
         return self[letter][number]
 
-    def move(self, from_location, to_location):
-        square = self.get(from_location)
-        square.piece.move(square.get_paths(), to_location)
+    #~ def move(self, from_location, to_location):
+        #~ square = self.get(from_location)
+        #~ return square.piece.move(square.get_paths(), to_location)
 
     def _link_spaces(self):
         for letter in self.keys():
@@ -232,4 +269,7 @@ class Board(dict):
                 square.piece = Pawn(square, color)
 
 
-b = Board()
+if __name__ == "__main__":
+    b = Board()
+    b.a2.piece = Pawn(b.a2, 'w')
+    
