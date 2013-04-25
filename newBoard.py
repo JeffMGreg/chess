@@ -2,6 +2,12 @@
 
 import ipdb
 
+class InvalidMove(Exception):
+    def __init__(self, msg=""):
+        self.msg = msg
+    def __str__(self):
+        return self.msg
+
 class Space(object):
 
     #~ Parts of the board that make up the piece location.  The space is needed
@@ -12,32 +18,32 @@ class Space(object):
     #~ Increasing in letters/numbers gives +delta
     #~ Decreasing in letters/numbers gives -delta
     compus_deltas = dict(
-        N  = ( 0,  1), S  = ( 0, -1), E  = ( 1,  0), W  = (-1,  0),
-        NE = ( 1,  1), NW = (-1,  1), SE = ( 1, -1), SW = (-1, -1),
-        L1 = ( 1,  2), L2 = ( 1, -2), L3 = ( 2,  1), L4 = ( 2, -1),
-        L5 = (-1,  2), L6 = (-1, -2), L7 = (-2,  1), L8 = (-2, -1))
+        _N  = ( 0,  1), _S  = ( 0, -1), _E  = ( 1,  0), _W  = (-1,  0),
+        _NE = ( 1,  1), _NW = (-1,  1), _SE = ( 1, -1), _SW = (-1, -1),
+        _L1 = ( 1,  2), _L2 = ( 1, -2), _L3 = ( 2,  1), _L4 = ( 2, -1),
+        _L5 = (-1,  2), _L6 = (-1, -2), _L7 = (-2,  1), _L8 = (-2, -1))
 
     #~ Translate the compus direction into the geometric direction.
     #~ H: Horizontal
     #~ V: Vertical
     #~ L: Knight
     compus_translations = dict(
-        N  = "V", S  = "V", E  = "H", W  = "H", NE = "D", NW = "D", SE = "D", SW = "D",
-        L1 = "L", L2 = "L", L3 = "L", L4 = "L", L5 = "L", L6 = "L", L7 = "L", L8 = "L")
+        _N  = "V", _S  = "V", _E  = "H", _W  = "H", _NE = "D", _NW = "D", _SE = "D", _SW = "D",
+        _L1 = "L", _L2 = "L", _L3 = "L", _L4 = "L", _L5 = "L", _L6 = "L", _L7 = "L", _L8 = "L")
 
     #~ Geographical direction around the square
-    compus_directions = ["N" , "S" , "E" , "W" , "NE", "NW", "SE", "SW",
-                         "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"]
+    compus_directions = ["_N" , "_S" , "_E" , "_W" , "_NE", "_NW", "_SE", "_SW",
+                         "_L1", "_L2", "_L3", "_L4", "_L5", "_L6", "_L7", "_L8"]
 
     def __init__(self, location):
         self.location = location
-        self.piece = " "
+        self.piece = Empty(location)
 
     def __repr__(self):
         return self.location
 
     def __str__(self):
-        return " "
+        return self.location
 
     def init(self, board):
         self._link_spaces(board)
@@ -56,14 +62,24 @@ class Space(object):
     def _get_path(self, direction, path):
         """Get all the squares that have access to attack this square with the
         direction passed."""
+        current_color = self.piece.color
         while True:
             space = getattr(self, direction)
             #~ None implies we're at the edge of the board
             if space is None:
                 break
+            #~ colors match meaning we're attacking our own piece.  Only save up to the
+            #~ piece and not the piece as we can't capture.
+            if (current_color != "wb".replace(space.piece.color, "")) and space.piece.color:
+                return path
+            #~ colors are different meaning we're attaching a valid piece. Save up to and
+            #~ including the piece first encountered.
+            elif (current_color == "wb".replace(space.piece.color, "")) and space.piece.color:
+                path.add(space)
+                return path
             path.add(space)
             #~ L shape moves only propagate one space for every direction.
-            if direction.startswith("L"):
+            if direction.startswith("_L"):
                 return path
             self = space
         return path
@@ -95,9 +111,10 @@ class Piece(object):
               "Rook"  : {"b": "♖", "w": "♜"},
               "Bishop": {"b": "♗", "w": "♝"},
               "Knight": {"b": "♘", "w": "♞"},
-              "Pawn"  : {"b": "♙", "w": "♟"}}
+              "Pawn"  : {"b": "♙", "w": "♟"},
+              "Empty" : {"" : " "}}
 
-    def __init__(self, location, color):
+    def __init__(self, location, color=""):
         self.first_move = 0
         self.location = location
         self.color = color
@@ -111,9 +128,24 @@ class Piece(object):
         return self.piece
         #~ return self.__class__.__name__
 
+    def move(self, paths, to):
+        print "Handle {} moves from {} to {}".format(self.name, self.location, to)
+        self._move(paths, to)
+
+class Empty(Piece):
+    def __init__(self, location):
+        Piece.__init__(self, location)
+
+    def _move(self, *args):
+        raise InvalidMove("Must select a square with a piece on it")
+
 class Pawn(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
+
+    def _move(self, paths, to):
+        print "to", to
+        print paths
 
 class Rook(Piece):
     def __init__(self, location, color):
@@ -160,8 +192,7 @@ class Board(dict):
             self._setup_pieces()
 
     def show(self):
-                  #0 1 2 3 4 5 6 7 8 9 0
-        borders = "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼".split()
+        #~ "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼"
         print " ┌───┬───┬───┬───┬───┬───┬───┬───┐"
         for number in "87654321":
             row = []
@@ -180,6 +211,10 @@ class Board(dict):
     def get(self, location):
         letter, number = location
         return self[letter][number]
+
+    def move(self, from_location, to_location):
+        square = self.get(from_location)
+        square.piece.move(square.get_paths(), to_location)
 
     def _link_spaces(self):
         for letter in self.keys():
