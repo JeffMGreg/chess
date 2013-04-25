@@ -83,27 +83,45 @@ class Space(object):
         except KeyError:
             return None
         
-class Piece(object):pass
-class Pawn(Piece):pass
-class Rook(Piece):pass
-class Knight(Piece):pass
-class Bishop(Piece):pass
-class King(Piece):pass
-class Queen(Piece):pass
+class Piece(object):
+
+    def __init__(self, location, color):
+        self.first_move = 0
+        self.location = location
+        self.color = color
+
+    def __str__(self):
+        return self.__class__.__name__
+    
+    def __repr__(self):
+        return self.__class__.__name__
+
+class Pawn(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)
+    
+class Rook(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)
+
+class Knight(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)    
+
+class Bishop(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)
+
+class King(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)
+            
+class Queen(Piece):
+    def __init__(self, location, color):
+        Piece.__init__(self, location, color)
     
 
-class Board(dict):
-                     #~ White
-    initial_layout = [("a2", Pawn), ("b2", Pawn), ("c2", Pawn), ("d2", Pawn), 
-                      ("e2", Pawn), ("f2", Pawn), ("g2", Pawn), ("h2", Pawn), 
-                      ("a1", Rook), ("b1", Knight), ("c1", Bishop), ("d1", Queen), 
-                      ("e1", King), ("f1", Bishop), ("g1", Knight), ("h1", Rook),
-                      #~ Black
-                      ("a7", Pawn), ("b7", Pawn), ("c7", Pawn), ("d7", Pawn), 
-                      ("e7", Pawn), ("f7", Pawn), ("g7", Pawn), ("h7", Pawn), 
-                      ("a8", Rook), ("b8", Knight), ("c8", Bishop), ("d8", Queen), 
-                      ("e8", King), ("f8", Bishop), ("g8", Knight), ("h8", Rook)]                      
-                      
+class Board(dict):                      
     #~ Makes a dict of all the free spaces for the board
     free_spaces = {letter:{number:Space(letter+number) for number in "12345678"} for letter in "abcdefgh"}
     
@@ -124,8 +142,13 @@ class Board(dict):
         #~ We're at the last file, we can now link our squares together.
         if key == "h":
             self._link_spaces()
-                
+            self._setup_pieces()
+            
     def __getattr__(self, location):
+        letter, number = location
+        return self[letter][number]
+
+    def get(self, location):
         letter, number = location
         return self[letter][number]
 
@@ -134,8 +157,15 @@ class Board(dict):
             for number in self[letter].keys():
                 self[letter][number].init(self)
                 
-    def setup_pieces(self):
-        
+    def _setup_pieces(self):
+        lineup = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
+        for piece, letter in zip(lineup, "abcdefgh"):
+            for number, color in zip("18", "wb"):
+                square = self.get(letter+number)
+                square.piece = piece(square, color)
+            for number, color in zip("27", "wb"):
+                square = self.get(letter+number)
+                square.piece = Pawn(square, color)
 
 
 b = Board()
