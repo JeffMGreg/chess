@@ -12,7 +12,7 @@ class Space(object):
     #~ Parts of the board that make up the piece location.  The space is needed
     #~ for the linking_spaces method in Board
     letters_numbers = ("abcdefgh  ", "12345678  ")
-    
+
     #~ These are the direction on how to find the neighboring squares. Origin is
     #~ at "a1", letters are along x,  numbers are along y
     #~ Increasing in letters/numbers gives +delta
@@ -42,18 +42,23 @@ class Space(object):
         self.location = location
         self.piece = Empty(location)
 
-    def __repr__(self):
-        return self.location
-
     def __str__(self):
         return self.location
 
     def init(self, board):
+        self.board = board
         self._link_spaces(board)
 
     def move(self, to):
-        if self.piece.move(self.get_paths(), to):
-            pass
+        try:
+            self.piece.move(self.get_paths(), to)
+        except InvalidMove:
+            return False
+        else:
+            self.piece.square = self.board.__getattr__(to)
+            self.board.__getattr__(to).piece = self.piece
+            self.piece = Empty(self.location)
+            self.board.show()
 
     def get_paths(self):
         """Get all the squares that have access to attack this square."""
@@ -75,23 +80,23 @@ class Space(object):
             #~ None implies we're at the edge of the board
             if space is None:
                 break
-                
+
             #~ colors match meaning we're attacking our own piece.  Only save up to the
             #~ piece and not the piece as we can't capture.
             if (current_color != "wb".replace(space.piece.color, "")) and space.piece.color:
                 return path
-                
+
             #~ colors are different meaning we're attaching a valid piece. Save up to and
             #~ including the piece first encountered.
             elif (current_color == "wb".replace(space.piece.color, "")) and space.piece.color:
                 path.add(space)
                 return path
-                
+
             path.add(space)
             #~ L shape moves only propagate one space for every direction.
             if direction.startswith("_L"):
                 return path
-                
+
             #~ Set the neighbor as the current square.
             self = space
         return path
@@ -127,9 +132,9 @@ class Piece(object):
               "Pawn"  : {"b": "♙", "w": "♟"},
               "Empty" : {"" : " "}}
 
-    def __init__(self, location, color=""):
+    def __init__(self, square, color=""):
         self.move_count = 0
-        self.location   = location
+        self.square     = square
         self.color      = color
         self.name       = self.__class__.__name__
         self.piece      = self.pieces[self.name][self.color]
@@ -138,9 +143,9 @@ class Piece(object):
         return self.piece
 
     def move(self, paths, to):
-        from_letter, from_number = self.location.location
+        from_letter, from_number = self.square.location
         to_letter, to_number = to
-        
+
         dx = "abcdefgh".find(to_letter) - "abcdefgh".find(from_letter)
         dy = "12345678".find(to_number) - "12345678".find(from_number)
 
@@ -148,17 +153,17 @@ class Piece(object):
 
 
 class Empty(Piece):
-    def __init__(self, location):
-        Piece.__init__(self, location)
+    def __init__(self, square):
+        Piece.__init__(self, square)
 
     def _move(self, *args):
         raise InvalidMove("Must select a square with a piece on it")
 
 
 class Pawn(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
-        
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
+
         #~ The direction that the piece must move, only needed with Pawns
         if self.color == "w":
             #~ Must move up the board
@@ -170,66 +175,66 @@ class Pawn(Piece):
     def _move(self, paths, to, dx, dy):
         valid_V_locations = map(lambda x: x.location, paths["V"])
         valid_D_locations = map(lambda x: x.location, paths["D"])
-        
+
         valid_moves = [
         #~ Normal attack
-        ((dy * self.must_move) == 1) and (to in valid_D_locations),
+        ((dy * self.must_move) == 1) and (to in valid_D_locations) and (self.square.board.__getattr__(to).piece.name is not "Empty"),
         #~ Move one square
-        ((dy * self.must_move) == 1) and (to in valid_V_locations),
+        ((dy * self.must_move) == 1) and (to in valid_V_locations) and (self.square.piece.name is "Empty"),
         #~ Move two squares on first move
         ((dy * self.must_move) == 2) and (to in valid_V_locations) and (self.move_count == 0),
         #~ Enpassant
         False]
-        
+
         if any(valid_moves):
             return True
         raise InvalidMove("Invalid Pawn Move")
 
 
 class Rook(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
-        
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
+
     def _move(self, paths, to, dx, dy):
         valid_V_locatoins = map(lambda x: x.location, paths["V"])
         valid_H_locations = map(lambda x: x.location, paths["H"])
-        
+
         valid_moves = [
         (abs(dy) > 1) and (dx == 0) and (to in valid_V_locations),
         (abs(dx) > 1) and (dy == 0) and (to in valid_H_locations)]
-        
+
         if any(valid_moves):
             return True
         raise InvalidMove("Invalid Rook Move")
 
 
 class Knight(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
 
     def _move(self, paths, to, dx, dy):
         valid_L_locations = map(lambda x: x.location, paths["L"])
-        
+
         if to in valid_L_locations:
             return True
         raise InvalidMove("Invalid Knight Move")
-        
+
 
 class Bishop(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
 
     def _move(self, paths, to, dx, dy):
         valid_D_locations = map(lambda x: x.location, paths["D"])
-        
+
         if to in valid_D_locations:
             return True
         raise InvalidMove("Invalid Bishop Move")
-        
+
 
 class King(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
 
     def _move(self, paths, to, dx, dy):
         valid_V_locations = map(lambda x: x.location, paths["V"])
@@ -237,17 +242,17 @@ class King(Piece):
         valid_H_locations = map(lambda x: x.location, paths["H"])
 
         valid_moves = [
-            ((abs(dx) == 1) or (abs(dy) == 1)) and ((to in valid_V_locations) or 
+            ((abs(dx) == 1) or (abs(dy) == 1)) and ((to in valid_V_locations) or
             (to in valid_H_locations) or (to in valid_D_locations)),]
-        
+
         if any(valid_moves):
             return True
         raise InvalidMove("Invalid King Move")
-                
+
 
 class Queen(Piece):
-    def __init__(self, location, color):
-        Piece.__init__(self, location, color)
+    def __init__(self, square, color):
+        Piece.__init__(self, square, color)
 
     def _move(self, paths, to, dx, dy):
         valid_V_locations = map(lambda x: x.location, paths["V"])
@@ -257,7 +262,7 @@ class Queen(Piece):
         if (to in valid_H_locations) or (to in valid_H_locations) or (to in valid_H_locations):
             return True
         raise InvalidMove("InvalidQueenMove")
-        
+
 
 class Board(dict):
     #~ Makes a dict of all the free spaces for the board
@@ -280,7 +285,7 @@ class Board(dict):
         #~ We're at the last file, we can now link our squares together.
         if key == "h":
             self._link_spaces()
-            #~ self._setup_pieces()
+            self._setup_pieces()
 
     def show(self):
         #~ "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼"
@@ -322,4 +327,7 @@ class Board(dict):
 if __name__ == "__main__":
     b = Board()
     b.a2.piece = Pawn(b.a2, 'w')
-    
+
+    b.a2.move("a4")
+    b.b7.move("b5")
+
