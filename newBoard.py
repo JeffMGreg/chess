@@ -9,7 +9,6 @@ class InvalidMove(Exception):
         return self.msg
 
 class Space(object):
-
     #~ Parts of the board that make up the piece location.  The space is needed
     #~ for the linking_spaces method in Board
     letters_numbers = ("abcdefgh  ", "12345678  ")
@@ -53,7 +52,8 @@ class Space(object):
         self._link_spaces(board)
 
     def move(self, to):
-        return self.piece.move(self.get_paths(), to)
+        if self.piece.move(self.get_paths(), to):
+            pass
 
     def get_paths(self):
         """Get all the squares that have access to attack this square."""
@@ -116,6 +116,7 @@ class Space(object):
         except KeyError:
             return None
 
+
 class Piece(object):
 
     pieces = {"King"  : {"b": "♔", "w": "♚"},
@@ -137,8 +138,6 @@ class Piece(object):
         return self.piece
 
     def move(self, paths, to):
-        #~ print "Handle {} moves from {} to {}".format(self.name, self.location, to)
-        
         from_letter, from_number = self.location.location
         to_letter, to_number = to
         
@@ -147,12 +146,14 @@ class Piece(object):
 
         return self._move(paths, to, dx, dy)
 
+
 class Empty(Piece):
     def __init__(self, location):
         Piece.__init__(self, location)
 
     def _move(self, *args):
         raise InvalidMove("Must select a square with a piece on it")
+
 
 class Pawn(Piece):
     def __init__(self, location, color):
@@ -167,16 +168,16 @@ class Pawn(Piece):
             self.must_move = -1
 
     def _move(self, paths, to, dx, dy):
-        valid_vertical_locations = map(lambda x: x.location, paths["V"])
-        valid_diagonal_locations = map(lambda x: x.location, paths["D"])
+        valid_V_locations = map(lambda x: x.location, paths["V"])
+        valid_D_locations = map(lambda x: x.location, paths["D"])
         
         valid_moves = [
         #~ Normal attack
-        ((dy * self.must_move) == 1) and (abs(dx) == 1) and (to in valid_diagonal_locations),
+        ((dy * self.must_move) == 1) and (to in valid_D_locations),
         #~ Move one square
-        ((dy * self.must_move) == 1) and (dx == 0) and (to in valid_vertical_locations),
+        ((dy * self.must_move) == 1) and (to in valid_V_locations),
         #~ Move two squares on first move
-        ((dy * self.must_move) == 2) and (dx == 0) and (to in valid_vertical_locations) and (self.move_count == 0),
+        ((dy * self.must_move) == 2) and (to in valid_V_locations) and (self.move_count == 0),
         #~ Enpassant
         False]
         
@@ -184,26 +185,79 @@ class Pawn(Piece):
             return True
         raise InvalidMove("Invalid Pawn Move")
 
+
 class Rook(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
+        
+    def _move(self, paths, to, dx, dy):
+        valid_V_locatoins = map(lambda x: x.location, paths["V"])
+        valid_H_locations = map(lambda x: x.location, paths["H"])
+        
+        valid_moves = [
+        (abs(dy) > 1) and (dx == 0) and (to in valid_V_locations),
+        (abs(dx) > 1) and (dy == 0) and (to in valid_H_locations)]
+        
+        if any(valid_moves):
+            return True
+        raise InvalidMove("Invalid Rook Move")
+
 
 class Knight(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
 
+    def _move(self, paths, to, dx, dy):
+        valid_L_locations = map(lambda x: x.location, paths["L"])
+        
+        if to in valid_L_locations:
+            return True
+        raise InvalidMove("Invalid Knight Move")
+        
+
 class Bishop(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
+
+    def _move(self, paths, to, dx, dy):
+        valid_D_locations = map(lambda x: x.location, paths["D"])
+        
+        if to in valid_D_locations:
+            return True
+        raise InvalidMove("Invalid Bishop Move")
+        
 
 class King(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
 
+    def _move(self, paths, to, dx, dy):
+        valid_V_locations = map(lambda x: x.location, paths["V"])
+        valid_D_locations = map(lambda x: x.location, paths["D"])
+        valid_H_locations = map(lambda x: x.location, paths["H"])
+
+        valid_moves = [
+            ((abs(dx) == 1) or (abs(dy) == 1)) and ((to in valid_V_locations) or 
+            (to in valid_H_locations) or (to in valid_D_locations)),]
+        
+        if any(valid_moves):
+            return True
+        raise InvalidMove("Invalid King Move")
+                
+
 class Queen(Piece):
     def __init__(self, location, color):
         Piece.__init__(self, location, color)
 
+    def _move(self, paths, to, dx, dy):
+        valid_V_locations = map(lambda x: x.location, paths["V"])
+        valid_D_locations = map(lambda x: x.location, paths["D"])
+        valid_H_locations = map(lambda x: x.location, paths["H"])
+
+        if (to in valid_H_locations) or (to in valid_H_locations) or (to in valid_H_locations):
+            return True
+        raise InvalidMove("InvalidQueenMove")
+        
 
 class Board(dict):
     #~ Makes a dict of all the free spaces for the board
@@ -248,10 +302,6 @@ class Board(dict):
     def get(self, location):
         letter, number = location
         return self[letter][number]
-
-    #~ def move(self, from_location, to_location):
-        #~ square = self.get(from_location)
-        #~ return square.piece.move(square.get_paths(), to_location)
 
     def _link_spaces(self):
         for letter in self.keys():
