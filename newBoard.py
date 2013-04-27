@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-import ipdb
+from ipdb import set_trace as trace
 
 class InvalidMove(Exception):
     def __str__(self):
@@ -48,16 +48,18 @@ class Square(object):
         self._link_squares(board)
 
     def move(self, to):
-        move, special = self.piece.move(self.get_paths(), to)
+        move = self.piece.move(self.get_paths(), to)
 
-        if move:
+        if move[0]:
             self.piece.square = self.board.get(to)
             self.board.get(to).piece = self.piece
             self.piece = Empty(self.location)
+            if move[1] == "empassant":
+                move[2].piece = Empty(move[2].location)
+
+            self.board.last_moved = self.board.get(to)
             #~ self.board.show()
-            return move, special
-        else:
-            return move, special
+        return move
 
     def get_paths(self):
         """Get all the squares that have access to attack this square."""
@@ -142,18 +144,18 @@ class Piece(object):
     def __str__(self):
         return self.piece
 
-    def move(self, paths, to):        
+    def move(self, paths, to):
         from_letter, from_number = self.square.location
         to_letter, to_number = to
 
         dx = "abcdefgh".find(to_letter) - "abcdefgh".find(from_letter)
         dy = "12345678".find(to_number) - "12345678".find(from_number)
 
-        vpos = map(lambda x: x.location, paths["V"])
-        dpos = map(lambda x: x.location, paths["D"])
-        hpos = map(lambda x: x.location, paths["H"])
-        lpos = map(lambda x: x.location, paths["L"])
-        
+        vpos = to in map(lambda x: x.location, paths["V"])
+        dpos = to in map(lambda x: x.location, paths["D"])
+        hpos = to in map(lambda x: x.location, paths["H"])
+        lpos = to in map(lambda x: x.location, paths["L"])
+
         return self._move(paths, to, dx, dy, vpos, dpos, hpos, lpos)
 
 
@@ -188,22 +190,25 @@ class Pawn(Piece):
         #~ Move one square
         ((dy * self.must_move) == 1) and vpos and (to_square.piece.name is "Empty"),
         #~ Move two squares on first move
-        ((dy * self.must_move) == 2) and vpos and (to_square.piece.name is "Empty") and 
+        ((dy * self.must_move) == 2) and vpos and (to_square.piece.name is "Empty") and
         (self.move_count == 0),
         #~ Enpassant
-        ((dy * self.must_move) == 1) and dpos and (special.piece.color != self.color) and 
-        (special.piece.name == "Pawn") and (special.piece.move_count == 1) and 
+        ((dy * self.must_move) == 1) and dpos and (special.piece.color != self.color) and
+        (special.piece.name == "Pawn") and (special.piece.move_count == 1) and
         (self.square.board.last_moved == special)
         ]
 
         if any(valid_moves):
             self.move_count += 1
-            if valid_moves[-1]:
-                return True, "enpassant"
+            if valid_moves[3]:
+                #~ return True, "enpassant:" + ["", "_S", "_N"][self.must_move]
+                return True, "empassant", special
+            elif valid_moves[0]:
+                return True, "attack", None
             else:
-                return True, "normal"
+                return True, "normal", None
         else:
-            return False, ""
+            return False, "", None
 
 
 class Rook(Piece):
@@ -247,9 +252,9 @@ class King(Piece):
         Piece.__init__(self, square, color, side)
 
     def _move(self, paths, to, dx, dy, vpos, dpos, hpos, lpos):
-        
+
         ipdb.set_trace()
-        
+
         rooks = []
         for side in "kq":
             try:
@@ -258,15 +263,15 @@ class King(Piece):
                 raise Exception("Rook not found in piece team")
             else:
                 rooks.append(r)
-        
+
         valid_moves = [
             #~ Normal King moves
             ((abs(dx) == 1) or (abs(dy) == 1)) and ((to in vpos) or (to in hpos) or (to in dpos)),
             #~ King side castle
-            (dx ==  2) and (dy == 0) and (self.move_count == 0) and (rooks[0].move_count == 0) and 
+            (dx ==  2) and (dy == 0) and (self.move_count == 0) and (rooks[0].move_count == 0) and
             (rooks[0].move_count == 0) and ("g1" in hpos),
             #~ Queen side castle
-            (dx == -2) and (dy == 0) and (self.move_count == 0) and (rooks[1].move_count == 0) and 
+            (dx == -2) and (dy == 0) and (self.move_count == 0) and (rooks[1].move_count == 0) and
             (rooks[1].move_count == 0) and ("b1" in hpos)]
 
         if any(valid_moves):
@@ -292,29 +297,19 @@ class Queen(Piece):
 
 
 class Board(dict):
-    #~ Makes a dict of all the free spaces for the board
-    free_spaces = {letter:{number:Square(letter+number) for number in "12345678"} for letter in "abcdefgh"}
 
-    def __init__(self, sub_dict=False):
-
-        if sub_dict:
-            self.sub = sub_dict
-        else:
-            self.sub = self.free_spaces
-        
-        #~ Handle the nested dicts
-        for key in self.sub.keys():
-            if (type(self.sub[key]) is dict):
-                self[key] = Board(self.sub[key])
+    def __init__(self, sub=False):
+        for key in sub.keys():
+            if (type(sub[key]) is dict):
+                self[key] = Board(sub[key])
             else:
-                self[key] = self.sub[key]
+                self[key] = sub[key]
 
         #~ We're at the last file, we can now link our squares together.
         if key == "h":
             self.last_moved = None
             self._link_squares()
             self._setup_pieces()
-            
 
     def show(self):
         #~ "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼"
@@ -355,7 +350,7 @@ class Board(dict):
                 else:
                     black.append(player)
                 square.piece = player
-                
+
             for number, color in zip("27", "wb"):
                 square = self.get(letter+number)
                 player = Pawn(square, color, side)
@@ -365,7 +360,7 @@ class Board(dict):
                     black.append(player)
                 square.piece = player
         self._assign_team(white, black)
-    
+
     def _assign_team(self, white, black):
         for letter in "abcdefgh":
             for number in "12":
@@ -374,11 +369,10 @@ class Board(dict):
                 self.get(letter + number).piece.team = black
 
 if __name__ == "__main__":
-    b = Board()
+    b = Board({letter:{number:Square(letter+number) for number in "12345678"} for letter in "abcdefgh"})
 
     b.a2.move("a4")
     b.a4.move("a5")
-    b.a5.move("a6")
-    b.b7.move("b6")
-    
+    #~ b.a5.move("a6")
+    b.b7.move("b5")
 
