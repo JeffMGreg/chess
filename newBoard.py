@@ -51,14 +51,20 @@ class Square(object):
         move = self.piece.move(self.get_paths(), to)
 
         if move[0]:
+            #~ Sets the piece square to the to square
             self.piece.square = self.board.get(to)
             self.board.get(to).piece = self.piece
             self.piece = Empty(self.location)
             if move[1] == "empassant":
                 move[2].piece = Empty(move[2].location)
 
+
             self.board.last_moved = self.board.get(to)
-            #~ self.board.show()
+            self.board.update_move_list(self.location, to)
+
+            if self.board.SHOW_BOARD:
+                self.board.show()
+
         return move
 
     def get_paths(self):
@@ -216,13 +222,12 @@ class Rook(Piece):
         Piece.__init__(self, square, color, side)
 
     def _move(self, paths, to, dx, dy, vpos, dpos, hpos, lpos):
-        valid_moves = [(abs(dy) > 1) and (dx == 0) and (to in vpos),
-                       (abs(dx) > 1) and (dy == 0) and (to in hpos)]
-
+        valid_moves = [(abs(dy) > 0) and (dx == 0) and vpos,
+                       (abs(dx) > 0) and (dy == 0) and hpos]
         if any(valid_moves):
-            return True, "normal"
+            return True, "normal", None
         else:
-            return False, ""
+            return False, "", None
 
 
 class Knight(Piece):
@@ -230,10 +235,10 @@ class Knight(Piece):
         Piece.__init__(self, square, color, side)
 
     def _move(self, paths, to, dx, dy, vpos, dpos, hpos, lpos):
-        if to in lpos:
-            return True, "normal"
+        if lpos:
+            return True, "normal", None
         else:
-            return False, ""
+            return False, "", None
 
 
 class Bishop(Piece):
@@ -241,10 +246,10 @@ class Bishop(Piece):
         Piece.__init__(self, square, color, side)
 
     def _move(self, paths, to, dx, dy, vpos, dpos, hpos, lpos):
-        if to in dpos:
-            return True, "normal"
+        if dpos:
+            return True, "normal", None
         else:
-            return False, ""
+            return False, "", None
 
 
 class King(Piece):
@@ -298,18 +303,23 @@ class Queen(Piece):
 
 class Board(dict):
 
+    SHOW_BOARD = False
+
     def __init__(self, sub=False):
         for key in sub.keys():
             if (type(sub[key]) is dict):
                 self[key] = Board(sub[key])
             else:
                 self[key] = sub[key]
+        self.move_list = []
 
         #~ We're at the last file, we can now link our squares together.
         if key == "h":
             self.last_moved = None
             self._link_squares()
             self._setup_pieces()
+            if self.SHOW_BOARD:
+                self.show()
 
     def show(self):
         #~ "┌ ┐ └ ┘ ┬ ┴ ├ ┤ ─ │ ┼"
@@ -323,6 +333,10 @@ class Board(dict):
             print " ├───┼───┼───┼───┼───┼───┼───┼───┤"
         print " └───┴───┴───┴───┴───┴───┴───┴───┘"
         print "   a   b   c   d   e   f   g   h"
+
+    def update_move_list(self, from_location, to_location):
+        cl_move = "Board.{}.move(\"{}\")".format(from_location, to_location)
+        self.move_list.append(cl_move)
 
     def __getattr__(self, location):
         letter, number = location
@@ -370,9 +384,4 @@ class Board(dict):
 
 if __name__ == "__main__":
     b = Board({letter:{number:Square(letter+number) for number in "12345678"} for letter in "abcdefgh"})
-
-    b.a2.move("a4")
-    b.a4.move("a5")
-    #~ b.a5.move("a6")
-    b.b7.move("b5")
 
