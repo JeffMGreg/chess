@@ -66,22 +66,24 @@ class Square(object):
                 self.board.show()
         return move
 
-    def get_paths(self):
+    def get_paths(self, color=None):
         """Get all the squares that have access to attack this square."""
         paths = {"H": set(), "V": set(), "D": set(), "L": set()}
         origin = self
         for direction in self.COMPUS_DIRECTIONS:
             path = paths[self.COMPUS_TRANSLATIONS[direction]]
-            path = self._get_path(direction, path)
+            path = self._get_path(direction, path, color)
             self = origin
             paths[self.COMPUS_TRANSLATIONS[direction]] = path
         return paths
 
-    def _get_path(self, direction, path):
+    def _get_path(self, direction, path, color):
         """Get all the squares that have access to attack this square with the
         direction passed."""
 
-        color = self.color
+        if not color:
+            color = self.color
+            
         while True:
             square = getattr(self, direction)
             #~ None implies we're at the edge of the board
@@ -142,7 +144,6 @@ class Piece(Square):
 
     def __init__(self, location, color="", side=""):
         Square.__init__(self, location)
-
         self.move_count = 0
         self.color      = color
         #~ Nice name of the class
@@ -178,11 +179,10 @@ class Piece(Square):
 
     def check_king_safety(self, to):
         #~ Remove the piece from the board
-        from_piece = self
+        from_piece    = self
         from_location = self.location
-        to_piece   = self.board.get(to)
+        to_piece      = self.board.get(to)
 
-        #~ self.board.set(self.location, Empty(self.location))
         self.board.set(to, from_piece)
         self.board.set(from_location, Empty(from_location))
         try:
@@ -190,7 +190,7 @@ class Piece(Square):
         except ValueError:
             return True
         paths = king.get_paths()
-        threats = ["Rook", "Queen", "Bishop"]
+        threats = ["Rook", "Queen", "Bishop", "Knight", "Pawn", "King"]
         for direction in "HVD":
             for square in paths[direction]:
                 if (square.name in threats):
@@ -237,8 +237,7 @@ class Pawn(Piece):
         #~ Enpassant
         ((dy * self.must_move) == 1) and dpos and (special.color != self.color) and
         (special.name == "Pawn") and (special.move_count == 1) and
-        (self.board.last_moved == special)
-        ]
+        (self.board.last_moved == special)]
 
         if any(valid_moves):
             self.move_count += 1
@@ -292,14 +291,13 @@ class King(Piece):
         Piece.__init__(self, location, color, side)
 
     def move_valid_check(self, paths, to, dx, dy, vpos, dpos, hpos, lpos):
-
         for side in "kq":
             try:
-                r, = filter(lambda x: x.name is "Rook" and x.side is "k", self.team)
+                rook, = filter(lambda x: x.name is "Rook" and x.side is "k", self.team)
             except ValueError:
-                raise Exception("Rook not found in piece team")
+                raise Exception("Rook not found in piece's team")
             else:
-                rooks.append(r)
+                rooks.append(rook)
 
         valid_moves = [
             #~ Normal King moves
@@ -314,13 +312,42 @@ class King(Piece):
         if any(valid_moves):
             if valid_moves[1]:
                 return True, "queen_side_castle", None
+                self._check_safe_to_castle("queen")
             elif valid_moves[2]:
                 return True, "king_side_castle", None
+                self._check_safe_to_castle("king")
             else:
                 return True, "normal", None
         else:
             return False, "", None
 
+    def _check_safe_to_castle(self, side):
+        current = self
+        for step in xrange(3):
+            paths = current.get_paths(self.color)
+            for direction in "DVLH":
+                
+                threats = [
+                (direction in "D")  and any(map(lambda square: square.name in ["Queen", "Bishop"], paths[direction])),
+                (direction in "HV") and any(map(lambda square: square.name in ["Queen", "Rook"], paths[direction])),
+                (direction in "L")  and any(map(lambda square: square.name in ["Knight"], paths[direction])),]          
+                if any(threats):
+                    return False, "long range threat", None
+                
+            if side == "king":
+                close_threats = [
+                (current._NE.name in ["Pawn", "King"]) and (current._NE.color != self.color),
+                (current._NW.name in ["Pawn", "King"]) and (current._NW.color != self.color)]
+                current = current._E
+            else:
+                close_threats = [
+                (current._SE.name in ["Pawn", "King"]) and (current._SE.color != self.color),
+                (current._SW.name in ["Pawn", "King"]) and (current._SW.color != self.color)]
+                current = current._W
+
+            if any(close_threats):
+                return False, "point blank threat", None
+        return True
 
 class Queen(Piece):
     def __init__(self, location, color, side):
@@ -436,7 +463,7 @@ if __name__ == "__main__":
 
     k = King("e1", "w", "k")
     r = Rook("e2", "w", "k")
-    br = Rook("e7", "b", "k")
+    br = Rook("f3", "b", "k")
 
     k.team = [k, r]
     r.team = [k, r]
@@ -444,7 +471,7 @@ if __name__ == "__main__":
 
     b.set("e1", k)
     b.set("e2", r)
-    b.set("e7", br)
+    b.set("f3", br)
 
     b.show()
 
